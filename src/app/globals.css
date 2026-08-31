@@ -1,26 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-bg: #060d18;
+  --color-bg-soft: #081222;
+  --color-card: #0b1f3a;
+  --color-card-hover: #0e274a;
+  --color-border: #16294a;
+  --color-ink: #e8ecf1;
+  --color-ink-dim: #8ca0be;
+  --color-ink-faint: #5b6f8c;
+  --color-primary: #00b4d8;
+  --color-primary-dim: rgba(0, 180, 216, 0.14);
+  --color-green: #22c55e;
+  --color-green-dim: rgba(34, 197, 94, 0.14);
+  --color-red: #ef4444;
+  --color-red-dim: rgba(239, 68, 68, 0.14);
+  --color-purple: #9945ff;
+  --color-purple-dim: rgba(153, 69, 255, 0.14);
+  --color-yellow: #eab308;
+  --color-yellow-dim: rgba(234, 179, 8, 0.14);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--color-bg);
+  --color-bg-soft: var(--color-bg-soft);
+  --color-card: var(--color-card);
+  --color-card-hover: var(--color-card-hover);
+  --color-border: var(--color-border);
+  --color-ink: var(--color-ink);
+  --color-ink-dim: var(--color-ink-dim);
+  --color-ink-faint: var(--color-ink-faint);
+  --color-primary: var(--color-primary);
+  --color-primary-dim: var(--color-primary-dim);
+  --color-green: var(--color-green);
+  --color-green-dim: var(--color-green-dim);
+  --color-red: var(--color-red);
+  --color-red-dim: var(--color-red-dim);
+  --color-purple: var(--color-purple);
+  --color-purple-dim: var(--color-purple-dim);
+  --color-yellow: var(--color-yellow);
+  --color-yellow-dim: var(--color-yellow-dim);
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--color-border);
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-primary);
+  color: var(--color-bg);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-card-hover);
+}
+
+.bg-radial-glow {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(0, 180, 216, 0.16) 0%, rgba(0, 180, 216, 0) 70%),
+    radial-gradient(40% 40% at 85% 15%, rgba(153, 69, 255, 0.1) 0%, rgba(153, 69, 255, 0) 70%);
 }
