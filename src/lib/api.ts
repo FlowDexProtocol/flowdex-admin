@@ -15,6 +15,17 @@ import type {
   BuyerDetail,
   CityStat,
   ClaimTierStats,
+  CmsBanner,
+  CmsBannerPayload,
+  CmsBlogPost,
+  CmsBlogPostPayload,
+  CmsFaq,
+  CmsFaqPayload,
+  CmsMedia,
+  CmsMediaPayload,
+  CmsPageContent,
+  CmsTeamMember,
+  CmsTeamPayload,
   CountryStat,
   DailyStats,
   DashboardData,
@@ -218,3 +229,64 @@ export const getAuditLog = (token: string, filters: AuditFilters = {}) =>
 
 // ── Reports ──
 export const getFinancialReport = (token: string) => request<FinancialReport>('/admin/report/financial', { token });
+
+// ── CMS: Banners ──
+export const getCmsBanners = (token: string) => request<CmsBanner[]>('/admin/cms/banners', { token });
+export const createCmsBanner = (token: string, payload: CmsBannerPayload) =>
+  request<{ success: boolean; banner: CmsBanner }>('/admin/cms/banners', { method: 'POST', body: payload, token });
+export const updateCmsBanner = (token: string, id: number, payload: Partial<CmsBannerPayload>) =>
+  request<{ success: boolean; banner: CmsBanner }>(`/admin/cms/banners/${id}`, { method: 'PUT', body: payload, token });
+export const deleteCmsBanner = (token: string, id: number) =>
+  request<{ success: boolean }>(`/admin/cms/banners/${id}`, { method: 'DELETE', token });
+export const reorderCmsBanners = (token: string, ids: number[]) =>
+  request<{ success: boolean; order: number[] }>('/admin/cms/banners/reorder', { method: 'POST', body: { ids }, token });
+
+// ── CMS: FAQs ──
+export const getCmsFaqsAdmin = (token: string) => request<CmsFaq[]>('/admin/cms/faqs', { token });
+export const createCmsFaq = (token: string, payload: CmsFaqPayload) =>
+  request<{ success: boolean; faq: CmsFaq }>('/admin/cms/faqs', { method: 'POST', body: payload, token });
+export const updateCmsFaq = (token: string, id: number, payload: Partial<CmsFaqPayload>) =>
+  request<{ success: boolean; faq: CmsFaq }>(`/admin/cms/faqs/${id}`, { method: 'PUT', body: payload, token });
+export const deleteCmsFaq = (token: string, id: number) =>
+  request<{ success: boolean }>(`/admin/cms/faqs/${id}`, { method: 'DELETE', token });
+export const reorderCmsFaqs = (token: string, ids: number[]) =>
+  request<{ success: boolean; order: number[] }>('/admin/cms/faqs/reorder', { method: 'POST', body: { ids }, token });
+
+// ── CMS: Blog ──
+export const getCmsBlogAdmin = (token: string) => request<CmsBlogPost[]>('/admin/cms/blog', { token });
+export const createCmsBlogPost = (token: string, payload: CmsBlogPostPayload) =>
+  request<{ success: boolean; post: CmsBlogPost }>('/admin/cms/blog', { method: 'POST', body: payload, token });
+export const updateCmsBlogPost = (token: string, id: number, payload: Partial<CmsBlogPostPayload>) =>
+  request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}`, { method: 'PUT', body: payload, token });
+export const deleteCmsBlogPost = (token: string, id: number) =>
+  request<{ success: boolean }>(`/admin/cms/blog/${id}`, { method: 'DELETE', token });
+export const publishCmsBlogPost = (token: string, id: number) =>
+  request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}/publish`, { method: 'POST', token });
+export const unpublishCmsBlogPost = (token: string, id: number) =>
+  request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}/unpublish`, { method: 'POST', token });
+
+// ── CMS: Page Content ──
+export const getCmsPageContent = (token: string, page: string) => request<CmsPageContent>(`/admin/cms/page/${page}`, { token });
+export const setCmsPageField = (token: string, page: string, section: string, field: string, value: string) =>
+  request<{ success: boolean; content: { page: string; section: string; field: string; value: string } }>(
+    `/admin/cms/page/${page}/${section}/${field}`,
+    { method: 'PUT', body: { value }, token }
+  );
+
+// ── CMS: Media ──
+export const getCmsMedia = (token: string) => request<CmsMedia[]>('/admin/cms/media', { token });
+export const createCmsMedia = (token: string, payload: CmsMediaPayload) =>
+  request<{ success: boolean; media: CmsMedia }>('/admin/cms/media', { method: 'POST', body: payload, token });
+export const deleteCmsMedia = (token: string, id: number) =>
+  request<{ success: boolean }>(`/admin/cms/media/${id}`, { method: 'DELETE', token });
+
+// ── CMS: Team ──
+export const getCmsTeam = (token: string) => request<CmsTeamMember[]>('/admin/cms/team', { token });
+export const createCmsTeamMember = (token: string, payload: CmsTeamPayload) =>
+  request<{ success: boolean; member: CmsTeamMember }>('/admin/cms/team', { method: 'POST', body: payload, token });
+export const updateCmsTeamMember = (token: string, id: number, payload: Partial<CmsTeamPayload>) =>
+  request<{ success: boolean; member: CmsTeamMember }>(`/admin/cms/team/${id}`, { method: 'PUT', body: payload, token });
+export const deleteCmsTeamMember = (token: string, id: number) =>
+  request<{ success: boolean }>(`/admin/cms/team/${id}`, { method: 'DELETE', token });
+export const reorderCmsTeam = (token: string, ids: number[]) =>
+  request<{ success: boolean; order: number[] }>('/admin/cms/team/reorder', { method: 'POST', body: { ids }, token });

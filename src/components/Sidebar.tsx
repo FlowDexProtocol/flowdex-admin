@@ -19,25 +19,40 @@ const NAV_ITEMS = [
   { href: '/audit-log', label: 'Audit Log' },
 ];
 
+const CONTENT_NAV_ITEMS = [
+  { href: '/cms/banners', label: 'Banners' },
+  { href: '/cms/faqs', label: 'FAQs' },
+  { href: '/cms/blog', label: 'Blog' },
+  { href: '/cms/pages', label: 'Pages' },
+  { href: '/cms/media', label: 'Media' },
+  { href: '/cms/team', label: 'Team' },
+];
+
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+
+  const renderItems = (items: typeof NAV_ITEMS) =>
+    items.map((item) => {
+      const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onNavigate}
+          className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+            active ? 'bg-primary-dim text-primary' : 'text-ink-dim hover:bg-white/5 hover:text-ink'
+          }`}
+        >
+          {item.label}
+        </Link>
+      );
+    });
+
   return (
     <nav className="flex flex-col gap-0.5">
-      {NAV_ITEMS.map((item) => {
-        const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-              active ? 'bg-primary-dim text-primary' : 'text-ink-dim hover:bg-white/5 hover:text-ink'
-            }`}
-          >
-            {item.label}
-          </Link>
-        );
-      })}
+      {renderItems(NAV_ITEMS)}
+      <div className="mb-1 mt-4 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Content</div>
+      {renderItems(CONTENT_NAV_ITEMS)}
     </nav>
   );
 }

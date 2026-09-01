@@ -7,6 +7,124 @@
 
 export type Numeric = string | number;
 
+// ── CMS ──
+
+export interface CmsBanner {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  cta_text: string | null;
+  cta_link: string | null;
+  image_url: string | null;
+  bg_style: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsBannerPayload {
+  title: string;
+  subtitle?: string;
+  cta_text?: string;
+  cta_link?: string;
+  image_url?: string;
+  bg_style?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CmsFaq {
+  id: number;
+  question: string;
+  answer: string;
+  category: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsFaqPayload {
+  question: string;
+  answer: string;
+  category?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CmsBlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  cover_image_url: string | null;
+  category: string;
+  author: string;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsBlogPostPayload {
+  title: string;
+  slug?: string;
+  excerpt?: string;
+  content: string;
+  cover_image_url?: string;
+  category?: string;
+  author?: string;
+  is_published?: boolean;
+}
+
+export type CmsPageContent = Record<string, string>;
+
+export interface CmsMedia {
+  id: number;
+  name: string;
+  type: string;
+  url: string;
+  alt_text: string | null;
+  category: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CmsMediaPayload {
+  name: string;
+  type: string;
+  url: string;
+  alt_text?: string;
+  category?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
+export interface CmsTeamMember {
+  id: number;
+  name: string;
+  role: string;
+  bio: string | null;
+  photo_url: string | null;
+  linkedin_url: string | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CmsTeamPayload {
+  name: string;
+  role: string;
+  bio?: string;
+  photo_url?: string;
+  linkedin_url?: string;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
 export interface LoginPayload {
   username: string;
   password: string;

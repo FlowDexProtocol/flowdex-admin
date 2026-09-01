@@ -147,6 +147,59 @@ export function Label({ children }: { children: ReactNode }) {
   return <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-ink-dim">{children}</label>;
 }
 
+export function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="inline-flex items-center gap-2.5"
+    >
+      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? 'bg-green' : 'bg-white/10'}`}>
+        <span
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${checked ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+        />
+      </span>
+      {label && <span className="text-sm text-ink">{label}</span>}
+    </button>
+  );
+}
+
+export function IconButton({
+  onClick,
+  title,
+  variant = 'ghost',
+  children,
+}: {
+  onClick: () => void;
+  title: string;
+  variant?: 'ghost' | 'danger';
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className={`flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors ${
+        variant === 'danger' ? 'text-ink-dim hover:border-red/50 hover:text-red' : 'text-ink-dim hover:border-primary/50 hover:text-primary'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function StatCard({
   label,
   value,
