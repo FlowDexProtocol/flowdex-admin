@@ -39,7 +39,7 @@ export function Button({
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0';
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0';
   const variants: Record<ButtonVariant, string> = {
     primary: 'bg-primary text-[#03131a] hover:bg-primary/90',
     secondary: 'bg-card-hover text-ink border border-border hover:border-primary/50',
@@ -117,7 +117,7 @@ export function LoadingBlock() {
 export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint outline-none focus:border-primary/60 ${className}`}
+      className={`min-h-11 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint outline-none focus:border-primary/60 ${className}`}
       {...rest}
     />
   );
@@ -126,7 +126,7 @@ export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInput
 export function Select({ className = '', children, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-primary/60 ${className}`}
+      className={`min-h-11 w-full rounded-lg border border-border bg-bg-soft px-3 py-2.5 text-sm text-ink outline-none focus:border-primary/60 ${className}`}
       {...rest}
     >
       {children}
@@ -248,19 +248,23 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
   if (!mounted) return null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${open ? '' : 'pointer-events-none'}`}>
+    <div className={`fixed inset-0 z-50 flex items-stretch justify-center sm:items-center sm:p-4 ${open ? '' : 'pointer-events-none'}`}>
       <div
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
       />
       <div
-        className={`relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl transition-all ${
+        className={`relative flex h-full w-full flex-col overflow-y-auto border-border bg-card p-6 shadow-2xl transition-all sm:h-auto sm:max-w-md sm:rounded-2xl sm:border ${
           open ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-bold text-ink">{title}</h3>
-          <button onClick={onClose} className="text-ink-dim hover:text-ink" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-ink-dim hover:text-ink"
+            aria-label="Close"
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
             </svg>

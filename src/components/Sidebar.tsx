@@ -40,7 +40,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
           key={item.href}
           href={item.href}
           onClick={onNavigate}
-          className={`rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          className={`flex min-h-11 items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
             active ? 'bg-primary-dim text-primary' : 'text-ink-dim hover:bg-white/5 hover:text-ink'
           }`}
         >
@@ -52,7 +52,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className="flex flex-col gap-0.5">
       {renderItems(NAV_ITEMS)}
-      <div className="mb-1 mt-4 px-3 text-[10px] font-semibold uppercase tracking-widest text-ink-faint">Content</div>
+      <div className="mb-1 mt-4 px-3 text-xs font-semibold uppercase tracking-widest text-ink-faint">Content</div>
       {renderItems(CONTENT_NAV_ITEMS)}
     </nav>
   );
@@ -93,7 +93,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: { mobileOpen: boo
           <p className="truncate px-3 text-xs text-ink-faint">Signed in as {username}</p>
           <button
             onClick={handleLogout}
-            className="mt-2 w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red hover:bg-red-dim"
+            className="mt-2 flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-medium text-red hover:bg-red-dim"
           >
             Logout
           </button>
@@ -106,7 +106,11 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: { mobileOpen: boo
           <aside className="absolute left-0 top-0 h-full w-72 flex flex-col border-r border-border bg-bg-soft p-4">
             <div className="mb-6 flex items-center justify-between">
               <BrandMark />
-              <button onClick={onCloseMobile} className="text-ink-dim hover:text-ink" aria-label="Close menu">
+              <button
+                onClick={onCloseMobile}
+                className="flex h-11 w-11 items-center justify-center text-ink-dim hover:text-ink"
+                aria-label="Close menu"
+              >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
@@ -119,7 +123,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: { mobileOpen: boo
               <p className="truncate px-3 text-xs text-ink-faint">Signed in as {username}</p>
               <button
                 onClick={handleLogout}
-                className="mt-2 w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red hover:bg-red-dim"
+                className="mt-2 flex min-h-11 w-full items-center rounded-lg px-3 text-left text-sm font-medium text-red hover:bg-red-dim"
               >
                 Logout
               </button>

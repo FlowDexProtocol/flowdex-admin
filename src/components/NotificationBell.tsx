@@ -71,7 +71,7 @@ export default function NotificationBell() {
         type="button"
         onClick={toggleOpen}
         aria-label="Notifications"
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border text-ink-dim transition-colors hover:border-primary/50 hover:text-primary"
+        className="relative flex h-11 w-11 items-center justify-center rounded-lg border border-border text-ink-dim transition-colors hover:border-primary/50 hover:text-primary"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
@@ -86,7 +86,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-80 rounded-2xl border border-border bg-card p-3 shadow-2xl sm:w-96">
+        <div className="absolute right-0 top-12 z-50 w-[calc(100vw-2rem)] max-w-80 rounded-2xl border border-border bg-card p-3 shadow-2xl sm:w-96 sm:max-w-none">
           <p className="mb-2 px-1 text-xs font-semibold uppercase tracking-widest text-ink-dim">Recent Alerts</p>
           {loading && !entries ? (
             <div className="flex justify-center py-6">
@@ -102,8 +102,8 @@ export default function NotificationBell() {
                     <span className="text-xs font-medium text-ink">{e.event_type}</span>
                     {isAlertWorthy(e) && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-red" />}
                   </div>
-                  <p className="mt-0.5 text-[11px] text-ink-faint">{formatDateGmt4(e.created_at)}</p>
-                  {e.reason && <p className="mt-0.5 truncate text-[11px] text-ink-dim">{e.reason}</p>}
+                  <p className="mt-0.5 text-xs text-ink-faint">{formatDateGmt4(e.created_at)}</p>
+                  {e.reason && <p className="mt-0.5 truncate text-xs text-ink-dim">{e.reason}</p>}
                 </div>
               ))}
             </div>

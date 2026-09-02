@@ -31,7 +31,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
         <header className="flex items-center gap-3 border-b border-border bg-bg-soft px-4 py-3">
           <button
             onClick={() => setMobileOpen(true)}
-            className="rounded-md border border-border p-2 text-ink-dim lg:hidden"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border text-ink-dim lg:hidden"
             aria-label="Open menu"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

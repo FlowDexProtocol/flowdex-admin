@@ -14,7 +14,7 @@ function JsonPreview({ value }: { value: unknown }) {
   return (
     <details>
       <summary className="cursor-pointer text-xs text-primary">view</summary>
-      <pre className="mt-1 max-w-xs whitespace-pre-wrap break-all rounded bg-bg-soft p-2 text-[11px] text-ink-dim">
+      <pre className="mt-1 max-w-xs whitespace-pre-wrap break-all rounded bg-bg-soft p-2 text-xs text-ink-dim">
         {JSON.stringify(value, null, 2)}
       </pre>
     </details>

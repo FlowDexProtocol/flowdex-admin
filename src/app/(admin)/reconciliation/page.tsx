@@ -142,7 +142,7 @@ export default function ReconciliationPage() {
                           <summary className="cursor-pointer text-xs text-red">
                             {r.unmatched_incoming + r.unmatched_records} tx
                           </summary>
-                          <div className="mt-2 max-w-xs space-y-1 text-[11px]">
+                          <div className="mt-2 max-w-xs space-y-1 text-xs">
                             {r.discrepancy_details.unmatched_incoming.map((h) => (
                               <p key={h} className="truncate text-ink-dim">
                                 incoming: <Mono>{h}</Mono>

@@ -54,7 +54,7 @@ export default function DashboardPage() {
         title="Dashboard"
         description="Live presale overview."
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs text-ink-faint">Last updated: {formatSecondsAgo(secondsAgo)}</span>
             <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>
               {refreshing ? 'Refreshing…' : 'Refresh'}
