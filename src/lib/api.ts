@@ -11,8 +11,11 @@ import type {
   AdminPurchase,
   AdminReferral,
   AuditLogEntry,
+  BackupCodesResponse,
   BurnsSummary,
   BuyerDetail,
+  ChangePasswordPayload,
+  ChangePasswordResponse,
   CityStat,
   ClaimTierStats,
   CmsBanner,
@@ -138,6 +141,10 @@ export async function downloadCsv(path: string, token: string, filename: string)
 
 // ── Auth ──
 export const adminLogin = (payload: LoginPayload) => request<LoginResponse>('/admin/login', { method: 'POST', body: payload });
+export const adminChangePassword = (token: string, payload: ChangePasswordPayload) =>
+  request<ChangePasswordResponse>('/admin/change-password', { method: 'POST', body: payload, token });
+export const adminGenerateBackupCodes = (token: string) =>
+  request<BackupCodesResponse>('/admin/2fa/generate-backup-codes', { method: 'POST', token });
 
 // ── Dashboard ──
 export const getDashboard = (token: string) => request<DashboardData>('/admin/dashboard', { token });
@@ -226,6 +233,8 @@ export interface AuditFilters {
 }
 export const getAuditLog = (token: string, filters: AuditFilters = {}) =>
   request<AuditLogEntry[]>('/admin/audit-log', { token, query: filters });
+export const getRecentAuditLog = (token: string, limit = 10) =>
+  request<AuditLogEntry[]>('/admin/audit-log', { token, query: { limit } });
 
 // ── Reports ──
 export const getFinancialReport = (token: string) => request<FinancialReport>('/admin/report/financial', { token });

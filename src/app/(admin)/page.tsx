@@ -1,28 +1,67 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useFetch } from '@/lib/hooks';
 import { getDashboard, getPublicDailyStats, getSupply } from '@/lib/api';
-import { formatDateGmt4, formatPct, formatTokens, formatUsd, toNum } from '@/lib/format';
-import { Badge, Card, ErrorNote, LoadingBlock, PageHeader, ProgressBar, StatCard } from '@/components/ui';
+import { formatDateGmt4, formatPct, formatSecondsAgo, formatTokens, formatUsd, toNum } from '@/lib/format';
+import { Badge, Button, Card, ErrorNote, LoadingBlock, PageHeader, ProgressBar, StatCard } from '@/components/ui';
+
+const REFRESH_INTERVAL_MS = 60000;
 
 export default function DashboardPage() {
   const { adminFetch } = useAdminAuth();
 
-  const { data: dashboard, loading: dashboardLoading, error: dashboardError } = useFetch(
-    () => adminFetch((token) => getDashboard(token)),
+  const {
+    data: dashboard,
+    loading: dashboardLoading,
+    error: dashboardError,
+    reload: reloadDashboard,
+  } = useFetch(() => adminFetch((token) => getDashboard(token)), [], REFRESH_INTERVAL_MS);
+  const { data: supply, loading: supplyLoading, reload: reloadSupply } = useFetch(
+    () => adminFetch((token) => getSupply(token)),
     [],
-    30000
+    REFRESH_INTERVAL_MS
   );
-  const { data: supply, loading: supplyLoading } = useFetch(() => adminFetch((token) => getSupply(token)), [], 30000);
-  const { data: daily } = useFetch(() => getPublicDailyStats(), [], 30000);
+  const { data: daily, reload: reloadDaily } = useFetch(() => getPublicDailyStats(), [], REFRESH_INTERVAL_MS);
+
+  const [lastUpdated, setLastUpdated] = useState(() => Date.now());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (dashboard) setLastUpdated(Date.now());
+  }, [dashboard]);
+
+  useEffect(() => {
+    const id = setInterval(() => setSecondsAgo((Date.now() - lastUpdated) / 1000), 1000);
+    return () => clearInterval(id);
+  }, [lastUpdated]);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await Promise.all([reloadDashboard(), reloadSupply(), reloadDaily()]);
+    setLastUpdated(Date.now());
+    setRefreshing(false);
+  }
 
   const tier = dashboard?.active_tier;
   const tierProgressPct = tier ? (toNum(tier.total_raised_usd) / Math.max(toNum(tier.hard_cap_usd), 1)) * 100 : 0;
 
   return (
     <div>
-      <PageHeader title="Dashboard" description="Live presale overview." />
+      <PageHeader
+        title="Dashboard"
+        description="Live presale overview."
+        action={
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-ink-faint">Last updated: {formatSecondsAgo(secondsAgo)}</span>
+            <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </div>
+        }
+      />
 
       {dashboardLoading && !dashboard ? (
         <LoadingBlock />

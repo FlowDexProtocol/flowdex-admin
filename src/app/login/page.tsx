@@ -12,6 +12,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const [useBackupCode, setUseBackupCode] = useState(false);
+  const [backupCode, setBackupCode] = useState('');
 
   useEffect(() => {
     if (isAuthenticated) router.replace('/');
@@ -19,7 +21,12 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const ok = await login({ username, password, totp_code: totpCode });
+    const ok = await login({
+      username,
+      password,
+      totp_code: useBackupCode ? '' : totpCode,
+      ...(useBackupCode ? { backup_code: backupCode } : {}),
+    });
     if (ok) router.replace('/');
   }
 
@@ -58,17 +65,37 @@ export default function LoginPage() {
             />
           </div>
           <div>
-            <Label>2FA Code</Label>
-            <Input
-              value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, ''))}
-              inputMode="numeric"
-              placeholder="123456"
-              maxLength={6}
-              autoComplete="one-time-code"
-              className="font-mono tracking-[0.3em]"
-              required
-            />
+            <div className="mb-1.5 flex items-center justify-between">
+              <Label>{useBackupCode ? 'Backup Code' : '2FA Code'}</Label>
+              <button
+                type="button"
+                onClick={() => setUseBackupCode((v) => !v)}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {useBackupCode ? 'Use 2FA code instead' : 'Use a backup code instead'}
+              </button>
+            </div>
+            {useBackupCode ? (
+              <Input
+                value={backupCode}
+                onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                placeholder="XXXX-XXXX-XXXX"
+                autoComplete="one-time-code"
+                className="font-mono tracking-wider"
+                required
+              />
+            ) : (
+              <Input
+                value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                inputMode="numeric"
+                placeholder="123456"
+                maxLength={6}
+                autoComplete="one-time-code"
+                className="font-mono tracking-[0.3em]"
+                required
+              />
+            )}
           </div>
 
           {loginError && <ErrorNote>{loginError}</ErrorNote>}

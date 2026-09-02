@@ -80,6 +80,15 @@ export function formatDateGmt4(iso: string | null | undefined): string {
   }).format(d);
 }
 
+export function formatSecondsAgo(seconds: number): string {
+  if (seconds < 5) return 'just now';
+  if (seconds < 60) return `${Math.floor(seconds)}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   const d = new Date(iso);

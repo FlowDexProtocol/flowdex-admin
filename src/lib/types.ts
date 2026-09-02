@@ -129,11 +129,29 @@ export interface LoginPayload {
   username: string;
   password: string;
   totp_code: string;
+  backup_code?: string;
 }
 
 export interface LoginResponse {
   success: boolean;
   token?: string;
+  error?: string;
+}
+
+export interface ChangePasswordPayload {
+  current_password: string;
+  new_password: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface BackupCodesResponse {
+  success: boolean;
+  codes: string[];
   error?: string;
 }
 

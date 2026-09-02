@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/reports', label: 'Reports' },
   { href: '/geo', label: 'Geo' },
   { href: '/audit-log', label: 'Audit Log' },
+  { href: '/settings', label: 'Settings' },
 ];
 
 const CONTENT_NAV_ITEMS = [
