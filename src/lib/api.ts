@@ -40,6 +40,7 @@ import type {
   OtcAllocation,
   OtcTodayEntry,
   OverridesResponse,
+  PaginatedResponse,
   ReconciliationResult,
   ReconciliationRunResult,
   SupplyStatus,
@@ -158,22 +159,51 @@ export interface PurchaseFilters {
   status?: string;
   from?: string;
   to?: string;
-  [key: string]: string | undefined;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  [key: string]: string | number | undefined;
 }
 export const getPurchases = (token: string, filters: PurchaseFilters = {}) =>
-  request<AdminPurchase[]>('/admin/purchases', { token, query: filters });
+  request<PaginatedResponse<AdminPurchase>>('/admin/purchases', { token, query: filters });
+export const exportPurchasesCsv = (token: string) =>
+  downloadCsv('/admin/purchases/export/csv', token, `flowdex_purchases_${new Date().toISOString().split('T')[0]}.csv`);
 
 // ── Buyers ──
-export const getBuyers = (token: string) => request<AdminBuyer[]>('/admin/buyers', { token });
+export interface BuyerFilters {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  [key: string]: string | number | undefined;
+}
+export const getBuyers = (token: string, filters: BuyerFilters = {}) =>
+  request<PaginatedResponse<AdminBuyer>>('/admin/buyers', { token, query: filters });
 export const getBuyerDetail = (token: string, wallet: string) => request<BuyerDetail>(`/admin/buyer/${wallet}`, { token });
+export const exportBuyersCsv = (token: string) =>
+  downloadCsv('/admin/buyers/export/csv', token, `flowdex_buyers_${new Date().toISOString().split('T')[0]}.csv`);
 
 // ── Tiers ──
 export const getAdminTiers = (token: string) => request<Tier[]>('/admin/tiers', { token });
 
 // ── Referrals ──
-export const getAdminReferrals = (token: string) => request<AdminReferral[]>('/admin/referrals', { token });
+export interface ReferralFilters {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  [key: string]: string | number | undefined;
+}
+export const getAdminReferrals = (token: string, filters: ReferralFilters = {}) =>
+  request<PaginatedResponse<AdminReferral>>('/admin/referrals', { token, query: filters });
 export const getTerminalCredits = (token: string) => request<TerminalCreditsSummary>('/admin/terminal-credits', { token });
 export const getBurns = (token: string) => request<BurnsSummary>('/admin/burns', { token });
+export const exportReferralsCsv = (token: string) =>
+  downloadCsv('/admin/referrals/export/csv', token, `flowdex_referrals_${new Date().toISOString().split('T')[0]}.csv`);
 
 // ── Claims ──
 export interface ClaimFilters {
@@ -181,11 +211,18 @@ export interface ClaimFilters {
   status?: string;
   from?: string;
   to?: string;
-  [key: string]: string | undefined;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  [key: string]: string | number | undefined;
 }
 export const getAdminClaims = (token: string, filters: ClaimFilters = {}) =>
-  request<AdminClaim[]>('/admin/claims', { token, query: filters });
+  request<PaginatedResponse<AdminClaim>>('/admin/claims', { token, query: filters });
 export const getClaimStats = (token: string) => request<ClaimTierStats[]>('/admin/claims/stats', { token });
+export const exportClaimsCsv = (token: string) =>
+  downloadCsv('/admin/claims/export/csv', token, `flowdex_claims_${new Date().toISOString().split('T')[0]}.csv`);
 
 // ── OTC ──
 export const postOtcAllocate = (token: string, payload: OtcAllocatePayload) =>
@@ -229,12 +266,19 @@ export interface AuditFilters {
   wallet?: string;
   from?: string;
   to?: string;
-  [key: string]: string | undefined;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: string;
+  order?: string;
+  [key: string]: string | number | undefined;
 }
 export const getAuditLog = (token: string, filters: AuditFilters = {}) =>
-  request<AuditLogEntry[]>('/admin/audit-log', { token, query: filters });
+  request<PaginatedResponse<AuditLogEntry>>('/admin/audit-log', { token, query: filters });
 export const getRecentAuditLog = (token: string, limit = 10) =>
-  request<AuditLogEntry[]>('/admin/audit-log', { token, query: { limit } });
+  request<PaginatedResponse<AuditLogEntry>>('/admin/audit-log', { token, query: { limit } });
+export const exportAuditLogCsv = (token: string) =>
+  downloadCsv('/admin/audit-log/export/csv', token, `flowdex_audit_log_${new Date().toISOString().split('T')[0]}.csv`);
 
 // ── Reports ──
 export const getFinancialReport = (token: string) => request<FinancialReport>('/admin/report/financial', { token });

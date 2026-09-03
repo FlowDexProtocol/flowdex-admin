@@ -7,6 +7,14 @@
 
 export type Numeric = string | number;
 
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  pages: number;
+}
+
 // ── CMS ──
 
 export interface CmsBanner {

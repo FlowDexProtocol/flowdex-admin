@@ -41,7 +41,8 @@ export default function NotificationBell() {
   const [lastSeenId, setLastSeenId] = useState(readLastSeenId);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { data: entries, loading } = useFetch(() => adminFetch((token) => getRecentAuditLog(token, 10)), [], 60000);
+  const { data: result, loading } = useFetch(() => adminFetch((token) => getRecentAuditLog(token, 10)), [], 60000);
+  const entries = result?.data ?? null;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

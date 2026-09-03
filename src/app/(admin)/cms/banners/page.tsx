@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
@@ -111,8 +111,42 @@ function ImageField({ label, value, onChange }: { label: string; value: string |
           onError={() => setBroken(true)}
         />
       )}
+      {looksLikeUrl(value) && broken && <p className="mt-1.5 text-xs text-red">Invalid URL — image failed to load.</p>}
     </div>
   );
+}
+
+// "3d 12h 45m" / "Ended" — recomputed on an interval while the form is open
+// so it stays accurate as the admin edits the countdown field.
+function useCountdownPreview(iso: string | undefined): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!iso) {
+      setLabel(null);
+      return;
+    }
+    const target = new Date(iso).getTime();
+    if (Number.isNaN(target)) {
+      setLabel(null);
+      return;
+    }
+    function tick() {
+      const diffMs = target - Date.now();
+      if (diffMs <= 0) {
+        setLabel('Ended');
+        return;
+      }
+      const totalMinutes = Math.floor(diffMs / 60000);
+      const days = Math.floor(totalMinutes / (60 * 24));
+      const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+      const minutes = totalMinutes % 60;
+      setLabel(`Ends in ${days}d ${hours}h ${minutes}m`);
+    }
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [iso]);
+  return label;
 }
 
 export default function BannersPage() {
@@ -128,10 +162,30 @@ export default function BannersPage() {
   const [deleteTarget, setDeleteTarget] = useState<CmsBanner | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
+  const countdownPreview = useCountdownPreview(form.countdown_end);
 
   function openCreate() {
     setEditing(null);
     setForm(EMPTY_FORM);
+    setFormError(null);
+    setModalOpen(true);
+  }
+
+  function openClone(banner: CmsBanner) {
+    setEditing(null);
+    setForm({
+      title: `${banner.title} (Copy)`,
+      subtitle: banner.subtitle ?? '',
+      cta_text: banner.cta_text ?? '',
+      cta_link: banner.cta_link ?? '',
+      image_url_desktop: banner.image_url_desktop ?? '',
+      image_url_mobile: banner.image_url_mobile ?? '',
+      countdown_end: banner.countdown_end ?? '',
+      show_countdown: banner.show_countdown,
+      bg_color: banner.bg_color ?? '',
+      bg_style: banner.bg_style,
+      is_active: false,
+    });
     setFormError(null);
     setModalOpen(true);
   }
@@ -290,6 +344,12 @@ export default function BannersPage() {
                         />
                       </svg>
                     </IconButton>
+                    <IconButton title="Clone" onClick={() => openClone(b)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                        <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.75" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                      </svg>
+                    </IconButton>
                     <IconButton title="Delete" variant="danger" onClick={() => setDeleteTarget(b)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                         <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -345,6 +405,7 @@ export default function BannersPage() {
               value={isoToLocalInput(form.countdown_end)}
               onChange={(e) => setForm({ ...form, countdown_end: localInputToIso(e.target.value) })}
             />
+            {countdownPreview && <p className="mt-1.5 font-mono text-xs text-primary">{countdownPreview}</p>}
             <div className="mt-2">
               <Toggle checked={!!form.show_countdown} onChange={(v) => setForm({ ...form, show_countdown: v })} label="Show countdown" />
             </div>

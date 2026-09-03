@@ -173,7 +173,30 @@ export default function PageContentPage() {
 
   return (
     <div>
-      <PageHeader title="Page Content" description="Edit any text block on the site without touching code." />
+      <PageHeader
+        title="Page Content"
+        description="Edit any text block on the site without touching code."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="https://flowdexprotocol.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card-hover px-4 text-sm font-semibold text-ink transition-colors hover:border-primary/50"
+            >
+              Preview Site
+            </a>
+            <a
+              href="https://purchase.flowdexprotocol.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card-hover px-4 text-sm font-semibold text-ink transition-colors hover:border-primary/50"
+            >
+              Preview Buy Page
+            </a>
+          </div>
+        }
+      />
 
       <Card className="mb-6 max-w-xs">
         <Label>Page</Label>

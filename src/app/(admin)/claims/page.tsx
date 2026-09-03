@@ -1,11 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useFetch } from '@/lib/hooks';
-import { getAdminClaims, getAdminTiers, getClaimStats } from '@/lib/api';
+import { exportClaimsCsv, getAdminClaims, getAdminTiers, getClaimStats } from '@/lib/api';
 import { formatDate, formatPct, formatTokens, truncateWallet } from '@/lib/format';
-import { Badge, Card, EmptyState, ErrorNote, Label, LoadingBlock, Mono, PageHeader, ProgressBar, Select, TableShell, td, th } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorNote,
+  Label,
+  LoadingBlock,
+  Mono,
+  PageHeader,
+  Pagination,
+  ProgressBar,
+  Select,
+  TableShell,
+  td,
+  th,
+} from '@/components/ui';
 
 const STATUSES = ['eligible', 'claimed'];
 
@@ -15,20 +31,56 @@ const STATUS_TONE: Record<string, 'green' | 'primary' | 'neutral'> = {
 };
 
 export default function ClaimsPage() {
-  const { adminFetch } = useAdminAuth();
+  const { adminFetch, token } = useAdminAuth();
   const [tier, setTier] = useState('');
   const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [tier, status, limit]);
 
   const { data: tiers } = useFetch(() => adminFetch((t) => getAdminTiers(t)), []);
   const { data: stats } = useFetch(() => adminFetch((t) => getClaimStats(t)), []);
-  const { data: claims, loading, error } = useFetch(
-    () => adminFetch((t) => getAdminClaims(t, { tier: tier || undefined, status: status || undefined })),
-    [tier, status]
+  const { data: result, loading, error } = useFetch(
+    () => adminFetch((t) => getAdminClaims(t, { tier: tier || undefined, status: status || undefined, page, limit })),
+    [tier, status, page, limit]
   );
+  const claims = result?.data ?? null;
+
+  async function handleExport() {
+    if (!token) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportClaimsCsv(token);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div>
-      <PageHeader title="Claims" description="TGE claim status across all buyers." />
+      <PageHeader
+        title="Claims"
+        description="TGE claim status across all buyers."
+        action={
+          <Button variant="secondary" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
+        }
+      />
+
+      {exportError && (
+        <div className="mb-4">
+          <ErrorNote>{exportError}</ErrorNote>
+        </div>
+      )}
 
       {stats && stats.length > 0 && (
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -79,40 +131,52 @@ export default function ClaimsPage() {
       ) : !claims || claims.length === 0 ? (
         <EmptyState>No claims match these filters.</EmptyState>
       ) : (
-        <TableShell>
-          <thead>
-            <tr className="border-b border-border">
-              <th className={th}>Wallet</th>
-              <th className={th}>Tier</th>
-              <th className={th}>Purchased</th>
-              <th className={th}>TGE %</th>
-              <th className={th}>Claimable</th>
-              <th className={th}>Status</th>
-              <th className={th}>Claimed At</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {claims.map((c) => (
-              <tr key={c.id}>
-                <td className={td}>
-                  <Mono>{truncateWallet(c.buyer_wallet)}</Mono>
-                </td>
-                <td className={`${td} text-ink-dim`}>{c.tier_name || `Tier ${c.tier_id}`}</td>
-                <td className={td}>
-                  <Mono>{formatTokens(c.total_purchased_tokens)}</Mono>
-                </td>
-                <td className={`${td} text-ink-dim`}>{formatPct(c.tge_percentage, 0)}</td>
-                <td className={td}>
-                  <Mono>{formatTokens(c.total_claimable)}</Mono>
-                </td>
-                <td className={td}>
-                  <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.status}</Badge>
-                </td>
-                <td className={`${td} text-ink-dim`}>{formatDate(c.claimed_at)}</td>
+        <>
+          <TableShell>
+            <thead>
+              <tr className="border-b border-border">
+                <th className={th}>Wallet</th>
+                <th className={th}>Tier</th>
+                <th className={th}>Purchased</th>
+                <th className={th}>TGE %</th>
+                <th className={th}>Claimable</th>
+                <th className={th}>Status</th>
+                <th className={th}>Claimed At</th>
               </tr>
-            ))}
-          </tbody>
-        </TableShell>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {claims.map((c) => (
+                <tr key={c.id}>
+                  <td className={td}>
+                    <Mono>{truncateWallet(c.buyer_wallet)}</Mono>
+                  </td>
+                  <td className={`${td} text-ink-dim`}>{c.tier_name || `Tier ${c.tier_id}`}</td>
+                  <td className={td}>
+                    <Mono>{formatTokens(c.total_purchased_tokens)}</Mono>
+                  </td>
+                  <td className={`${td} text-ink-dim`}>{formatPct(c.tge_percentage, 0)}</td>
+                  <td className={td}>
+                    <Mono>{formatTokens(c.total_claimable)}</Mono>
+                  </td>
+                  <td className={td}>
+                    <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.status}</Badge>
+                  </td>
+                  <td className={`${td} text-ink-dim`}>{formatDate(c.claimed_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </TableShell>
+          {result && (
+            <Pagination
+              page={result.page}
+              pages={result.pages}
+              total={result.total}
+              limit={result.limit}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
+          )}
+        </>
       )}
     </div>
   );

@@ -1,12 +1,27 @@
 'use client';
 
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
-import { useFetch } from '@/lib/hooks';
-import { getBuyerDetail, getBuyers, getPurchases } from '@/lib/api';
+import { useDebouncedValue, useFetch } from '@/lib/hooks';
+import { exportBuyersCsv, getBuyerDetail, getBuyers, getPurchases } from '@/lib/api';
 import { BUYER_TAGS } from '@/lib/types';
 import { formatDate, formatTokens, formatUsd, truncateWallet } from '@/lib/format';
-import { Badge, Card, EmptyState, ErrorNote, Input, LoadingBlock, Mono, PageHeader, Spinner, TableShell, td, th } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorNote,
+  Input,
+  LoadingBlock,
+  Mono,
+  PageHeader,
+  Pagination,
+  Spinner,
+  TableShell,
+  td,
+  th,
+} from '@/components/ui';
 
 function BuyerExpandedPanel({ wallet }: { wallet: string }) {
   const { adminFetch } = useAdminAuth();
@@ -104,12 +119,29 @@ function BuyerExpandedPanel({ wallet }: { wallet: string }) {
 }
 
 export default function BuyersPage() {
-  const { adminFetch } = useAdminAuth();
-  const [search, setSearch] = useState('');
+  const { adminFetch, token } = useAdminAuth();
+  const [searchInput, setSearchInput] = useState('');
+  const search = useDebouncedValue(searchInput, 500);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
-  const { data: buyers, loading, error } = useFetch(() => adminFetch((t) => getBuyers(t)), []);
-  const { data: purchases } = useFetch(() => adminFetch((t) => getPurchases(t, {})), []);
+  useEffect(() => {
+    setPage(1);
+  }, [search, limit]);
+
+  const { data: result, loading, error } = useFetch(
+    () => adminFetch((t) => getBuyers(t, { search: search || undefined, page, limit })),
+    [search, page, limit]
+  );
+  const buyers = result?.data ?? null;
+
+  // Sampled across the 500 most recent purchases (not the current page of
+  // buyers) purely to populate the "Tiers*" column preview below.
+  const { data: purchasesResult } = useFetch(() => adminFetch((t) => getPurchases(t, { limit: 500 })), []);
+  const purchases = purchasesResult?.data;
 
   const tiersByWallet = useMemo(() => {
     const map = new Map<string, Set<string>>();
@@ -121,85 +153,140 @@ export default function BuyersPage() {
     return map;
   }, [purchases]);
 
-  const filtered = useMemo(() => {
-    if (!buyers) return [];
-    const q = search.trim().toLowerCase();
-    return q ? buyers.filter((b) => b.buyer_wallet.toLowerCase().includes(q)) : buyers;
-  }, [buyers, search]);
+  async function handleExport() {
+    if (!token) return;
+    setExporting(true);
+    setExportError(null);
+    try {
+      await exportBuyersCsv(token);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div>
-      <PageHeader title="Buyer Directory" description="All registered buyers, ranked by total spend." />
+      <PageHeader
+        title="Buyer Directory"
+        description="All registered buyers, ranked by total spend."
+        action={
+          <Button variant="secondary" onClick={handleExport} disabled={exporting}>
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
+        }
+      />
+
+      {exportError && (
+        <div className="mb-4">
+          <ErrorNote>{exportError}</ErrorNote>
+        </div>
+      )}
 
       <div className="mb-6 max-w-sm">
-        <Input placeholder="Search by wallet address…" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="relative">
+          <Input
+            placeholder="Search by wallet address or tag…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') setPage(1);
+            }}
+            className="pr-9"
+          />
+          {searchInput && (
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint hover:text-ink"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {loading && !buyers ? (
         <LoadingBlock />
       ) : error && !buyers ? (
         <ErrorNote>{error}</ErrorNote>
-      ) : filtered.length === 0 ? (
+      ) : !buyers || buyers.length === 0 ? (
         <EmptyState>No buyers match this search.</EmptyState>
       ) : (
-        <TableShell>
-          <thead>
-            <tr className="border-b border-border">
-              <th className={th}>Wallet</th>
-              <th className={th}>Tag</th>
-              <th className={th}>Total Spent</th>
-              <th className={th}>Total Tokens</th>
-              <th className={th}>Purchases</th>
-              <th className={th}>Tiers*</th>
-              <th className={th}>Country</th>
-              <th className={th}>First Seen</th>
-              <th className={th}>Last Updated</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {filtered.map((b) => {
-              const isOpen = expanded === b.buyer_wallet;
-              const tagInfo = b.tag ? BUYER_TAGS[b.tag] : null;
-              const tiers = Array.from(tiersByWallet.get(b.buyer_wallet) ?? []);
-              return (
-                <Fragment key={b.buyer_wallet}>
-                  <tr
-                    onClick={() => setExpanded(isOpen ? null : b.buyer_wallet)}
-                    className="cursor-pointer hover:bg-white/5"
-                  >
-                    <td className={td}>
-                      <Mono>{truncateWallet(b.buyer_wallet)}</Mono>
-                    </td>
-                    <td className={td}>{tagInfo ? <Badge tone={tagInfo.tone}>{tagInfo.label}</Badge> : <span className="text-ink-faint">—</span>}</td>
-                    <td className={td}>
-                      <Mono>{formatUsd(b.total_usd_spent)}</Mono>
-                    </td>
-                    <td className={td}>
-                      <Mono>{formatTokens(b.total_tokens)}</Mono>
-                    </td>
-                    <td className={`${td} text-ink-dim`}>{b.total_purchases}</td>
-                    <td className={`${td} text-ink-dim`}>{tiers.length ? tiers.join(', ') : '—'}</td>
-                    <td className={`${td} text-ink-dim`}>{b.country || '—'}</td>
-                    <td className={`${td} text-ink-dim`}>{formatDate(b.created_at)}</td>
-                    <td className={`${td} text-ink-dim`}>{formatDate(b.updated_at)}</td>
-                  </tr>
-                  {isOpen && (
-                    <tr>
-                      <td colSpan={9} className="bg-bg-soft p-0">
-                        <BuyerExpandedPanel wallet={b.buyer_wallet} />
+        <>
+          <TableShell>
+            <thead>
+              <tr className="border-b border-border">
+                <th className={th}>Wallet</th>
+                <th className={th}>Tag</th>
+                <th className={th}>Total Spent</th>
+                <th className={th}>Total Tokens</th>
+                <th className={th}>Purchases</th>
+                <th className={th}>Tiers*</th>
+                <th className={th}>Country</th>
+                <th className={th}>First Seen</th>
+                <th className={th}>Last Updated</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {buyers.map((b) => {
+                const isOpen = expanded === b.buyer_wallet;
+                const tagInfo = b.tag ? BUYER_TAGS[b.tag] : null;
+                const tiers = Array.from(tiersByWallet.get(b.buyer_wallet) ?? []);
+                return (
+                  <Fragment key={b.buyer_wallet}>
+                    <tr
+                      onClick={() => setExpanded(isOpen ? null : b.buyer_wallet)}
+                      className="cursor-pointer hover:bg-white/5"
+                    >
+                      <td className={td}>
+                        <Mono>{truncateWallet(b.buyer_wallet)}</Mono>
                       </td>
+                      <td className={td}>{tagInfo ? <Badge tone={tagInfo.tone}>{tagInfo.label}</Badge> : <span className="text-ink-faint">—</span>}</td>
+                      <td className={td}>
+                        <Mono>{formatUsd(b.total_usd_spent)}</Mono>
+                      </td>
+                      <td className={td}>
+                        <Mono>{formatTokens(b.total_tokens)}</Mono>
+                      </td>
+                      <td className={`${td} text-ink-dim`}>{b.total_purchases}</td>
+                      <td className={`${td} text-ink-dim`}>{tiers.length ? tiers.join(', ') : '—'}</td>
+                      <td className={`${td} text-ink-dim`}>{b.country || '—'}</td>
+                      <td className={`${td} text-ink-dim`}>{formatDate(b.created_at)}</td>
+                      <td className={`${td} text-ink-dim`}>{formatDate(b.updated_at)}</td>
                     </tr>
-                  )}
-                </Fragment>
-              );
-            })}
-          </tbody>
-        </TableShell>
+                    {isOpen && (
+                      <tr>
+                        <td colSpan={9} className="bg-bg-soft p-0">
+                          <BuyerExpandedPanel wallet={b.buyer_wallet} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </TableShell>
+          {result && (
+            <Pagination
+              page={result.page}
+              pages={result.pages}
+              total={result.total}
+              limit={result.limit}
+              onPageChange={setPage}
+              onLimitChange={setLimit}
+            />
+          )}
+          <p className="mt-3 text-xs text-ink-faint">
+            * Tiers is computed from the 500 most recent purchases across all buyers and may be incomplete for the
+            longest-running wallets — click a row for that wallet&rsquo;s complete, accurate history.
+          </p>
+        </>
       )}
-      <p className="mt-3 text-xs text-ink-faint">
-        * Tiers is computed from the 500 most recent purchases across all buyers and may be incomplete for the
-        longest-running wallets — click a row for that wallet&rsquo;s complete, accurate history.
-      </p>
     </div>
   );
 }

@@ -227,6 +227,91 @@ export function StatCard({
   );
 }
 
+// Windowed page numbers around the current page, plus first/last, with
+// 'ellipsis' markers for the gaps — avoids rendering hundreds of buttons
+// for a large result set.
+function getPageWindow(page: number, pages: number): (number | 'ellipsis')[] {
+  const set = new Set<number>([1, pages]);
+  for (let p = page - 2; p <= page + 2; p++) {
+    if (p >= 1 && p <= pages) set.add(p);
+  }
+  const sorted = Array.from(set).sort((a, b) => a - b);
+  const result: (number | 'ellipsis')[] = [];
+  let prev = 0;
+  for (const p of sorted) {
+    if (prev && p - prev > 1) result.push('ellipsis');
+    result.push(p);
+    prev = p;
+  }
+  return result;
+}
+
+export function Pagination({
+  page,
+  pages,
+  total,
+  limit,
+  onPageChange,
+  onLimitChange,
+}: {
+  page: number;
+  pages: number;
+  total: number;
+  limit: number;
+  onPageChange: (page: number) => void;
+  onLimitChange: (limit: number) => void;
+}) {
+  if (total === 0) return null;
+  const start = (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+  const items = getPageWindow(page, Math.max(pages, 1));
+
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-ink-dim">
+        Showing {start.toLocaleString()}-{end.toLocaleString()} of {total.toLocaleString()}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={limit}
+          onChange={(e) => onLimitChange(Number(e.target.value))}
+          className="!w-auto"
+          aria-label="Rows per page"
+        >
+          <option value={25}>25 / page</option>
+          <option value={50}>50 / page</option>
+          <option value={100}>100 / page</option>
+        </Select>
+        <div className="flex items-center gap-1">
+          <Button variant="secondary" className="!px-3 !py-2" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+            Prev
+          </Button>
+          {items.map((it, i) =>
+            it === 'ellipsis' ? (
+              <span key={`e${i}`} className="px-1 text-ink-faint">
+                …
+              </span>
+            ) : (
+              <button
+                key={it}
+                onClick={() => onPageChange(it)}
+                className={`flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-medium transition-colors ${
+                  it === page ? 'bg-primary text-[#03131a]' : 'text-ink-dim hover:bg-white/5 hover:text-ink'
+                }`}
+              >
+                {it}
+              </button>
+            )
+          )}
+          <Button variant="secondary" className="!px-3 !py-2" disabled={page >= pages} onClick={() => onPageChange(page + 1)}>
+            Next
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export const th = 'px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
 export const td = 'px-3 py-2.5 align-middle';
 
