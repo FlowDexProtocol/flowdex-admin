@@ -4,10 +4,24 @@ import { useMemo, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
-import { getCmsPageContent, setCmsPageField } from '@/lib/api';
-import { Button, Card, EmptyState, ErrorNote, Label, LoadingBlock, PageHeader, Select, TableShell, Textarea, td, th } from '@/components/ui';
+import { getCmsPageContent, getCmsPages, setCmsPageField } from '@/lib/api';
+import { Button, Card, EmptyState, ErrorNote, Input, Label, LoadingBlock, PageHeader, Select, Textarea } from '@/components/ui';
 
-const PAGES = ['home', 'tokenomics', 'roadmap'];
+const FALLBACK_PAGES = ['home', 'tokenomics', 'roadmap'];
+const LONG_VALUE_THRESHOLD = 100;
+
+function fieldEditor(value: string, draft: string, setDraft: (v: string) => void) {
+  const useTextarea = draft.length >= LONG_VALUE_THRESHOLD || draft.includes(',');
+  if (!useTextarea) {
+    return <Input value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />;
+  }
+  return (
+    <div>
+      <Textarea rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
+      {draft.includes(',') && <p className="mt-1 text-xs text-ink-faint">Separate items with commas</p>}
+    </div>
+  );
+}
 
 function EditableRow({
   page,
@@ -42,26 +56,28 @@ function EditableRow({
     }
   }
 
+  const preview = value.length > 60 ? `${value.slice(0, 60)}…` : value;
+
   return (
-    <tr className="align-top">
-      <td className={`${td} whitespace-nowrap text-ink-dim`}>{section}</td>
-      <td className={`${td} whitespace-nowrap font-mono text-xs text-ink-dim`}>{field}</td>
-      <td className={td}>
-        {editing ? (
-          <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} className="min-w-[280px]" autoFocus />
-        ) : (
-          <p className="max-w-md whitespace-pre-wrap text-ink">{value}</p>
+    <div className="border-t border-border px-4 py-3 first:border-t-0">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-mono text-xs text-ink-faint">{field}</p>
+        {!editing && (
+          <Button variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => setEditing(true)}>
+            Edit
+          </Button>
         )}
-      </td>
-      <td className={td}>
-        {editing ? (
+      </div>
+      {editing ? (
+        <div className="mt-2 space-y-2">
+          {fieldEditor(value, draft, setDraft)}
           <div className="flex gap-1.5">
-            <Button className="!px-3 !py-1.5 text-xs" disabled={saving} onClick={handleSave}>
-              {saving ? '…' : 'Save'}
+            <Button className="!min-h-0 !px-3 !py-1.5 text-xs" disabled={saving} onClick={handleSave}>
+              {saving ? 'Saving…' : 'Save'}
             </Button>
             <Button
               variant="ghost"
-              className="!px-3 !py-1.5 text-xs"
+              className="!min-h-0 !px-3 !py-1.5 text-xs"
               onClick={() => {
                 setDraft(value);
                 setEditing(false);
@@ -70,30 +86,80 @@ function EditableRow({
               Cancel
             </Button>
           </div>
-        ) : (
-          <Button variant="secondary" className="!px-3 !py-1.5 text-xs" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-        )}
-      </td>
-    </tr>
+        </div>
+      ) : (
+        <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{preview || <span className="text-ink-faint">—</span>}</p>
+      )}
+    </div>
+  );
+}
+
+function SectionGroup({
+  page,
+  section,
+  rows,
+  onSaved,
+}: {
+  page: string;
+  section: string;
+  rows: { field: string; value: string }[];
+  onSaved: (section: string, field: string, value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Card className="!p-0 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="text-sm font-semibold text-ink">{section}</span>
+        <span className="flex items-center gap-2 text-xs text-ink-faint">
+          {rows.length} field{rows.length === 1 ? '' : 's'}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          >
+            <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+      {open && (
+        <div>
+          {rows.map((r) => (
+            <EditableRow key={r.field} page={page} section={section} field={r.field} value={r.value} onSaved={onSaved} />
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 
 export default function PageContentPage() {
   const { adminFetch } = useAdminAuth();
-  const [page, setPage] = useState(PAGES[0]);
+  const { data: pagesList } = useFetch(() => adminFetch((t) => getCmsPages(t)), []);
+  const pages = pagesList && pagesList.length > 0 ? pagesList : FALLBACK_PAGES;
+
+  const [page, setPage] = useState(FALLBACK_PAGES[0]);
   const { data: content, loading, error, reload } = useFetch(() => adminFetch((t) => getCmsPageContent(t, page)), [page]);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
 
-  const rows = useMemo(() => {
+  const sections = useMemo(() => {
     const merged: Record<string, string> = { ...(content ?? {}), ...overrides };
-    return Object.entries(merged)
-      .map(([key, value]) => {
-        const idx = key.indexOf('.');
-        return { key, section: key.slice(0, idx), field: key.slice(idx + 1), value };
-      })
-      .sort((a, b) => a.key.localeCompare(b.key));
+    const grouped = new Map<string, { field: string; value: string }[]>();
+    for (const [key, value] of Object.entries(merged)) {
+      const idx = key.indexOf('.');
+      const section = key.slice(0, idx);
+      const field = key.slice(idx + 1);
+      if (!grouped.has(section)) grouped.set(section, []);
+      grouped.get(section)!.push({ field, value });
+    }
+    for (const rows of grouped.values()) rows.sort((a, b) => a.field.localeCompare(b.field));
+    return Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [content, overrides]);
 
   function handleSaved(section: string, field: string, value: string) {
@@ -112,7 +178,7 @@ export default function PageContentPage() {
       <Card className="mb-6 max-w-xs">
         <Label>Page</Label>
         <Select value={page} onChange={(e) => handlePageChange(e.target.value)}>
-          {PAGES.map((p) => (
+          {pages.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -124,24 +190,14 @@ export default function PageContentPage() {
         <LoadingBlock />
       ) : error && !content ? (
         <ErrorNote>{error}</ErrorNote>
-      ) : rows.length === 0 ? (
+      ) : sections.length === 0 ? (
         <EmptyState>No content fields set for &ldquo;{page}&rdquo; yet.</EmptyState>
       ) : (
-        <TableShell>
-          <thead>
-            <tr className="border-b border-border">
-              <th className={th}>Section</th>
-              <th className={th}>Field</th>
-              <th className={th}>Value</th>
-              <th className={th}></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {rows.map((row) => (
-              <EditableRow key={row.key} page={page} section={row.section} field={row.field} value={row.value} onSaved={handleSaved} />
-            ))}
-          </tbody>
-        </TableShell>
+        <div className="space-y-3">
+          {sections.map(([section, rows]) => (
+            <SectionGroup key={section} page={page} section={section} rows={rows} onSaved={handleSaved} />
+          ))}
+        </div>
       )}
       <p className="mt-3 text-xs text-ink-faint">
         Changes save immediately per field.{' '}

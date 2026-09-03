@@ -32,9 +32,88 @@ const EMPTY_FORM: CmsBannerPayload = {
   subtitle: '',
   cta_text: '',
   cta_link: '',
+  image_url_desktop: '',
+  image_url_mobile: '',
+  countdown_end: '',
+  show_countdown: false,
+  bg_color: '',
   bg_style: 'gradient',
   is_active: true,
 };
+
+// <input type="datetime-local"> works in local time with no timezone
+// suffix — converting to/from the ISO string the API stores.
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(value: string): string {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+}
+
+function looksLikeUrl(value: string | undefined): boolean {
+  return !!value && /^https?:\/\//.test(value);
+}
+
+function BannerPreview({ form }: { form: CmsBannerPayload }) {
+  const bgImage = looksLikeUrl(form.image_url_desktop) ? form.image_url_desktop : undefined;
+  return (
+    <div
+      className="relative overflow-hidden rounded-xl border border-border p-5"
+      style={{
+        background: bgImage ? `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${bgImage}) center/cover` : form.bg_color || undefined,
+      }}
+    >
+      {!bgImage && !form.bg_color && (
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple/20" />
+      )}
+      <div className="relative">
+        <p className="text-sm font-bold text-white">{form.title || 'Banner title'}</p>
+        {form.subtitle && <p className="mt-1 text-xs text-white/80">{form.subtitle}</p>}
+        {form.cta_text && (
+          <span className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#03131a]">
+            {form.cta_text}
+          </span>
+        )}
+        {form.show_countdown && form.countdown_end && (
+          <p className="mt-2 font-mono text-xs text-white/90">Countdown: {new Date(form.countdown_end).toLocaleString()}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ImageField({ label, value, onChange }: { label: string; value: string | undefined; onChange: (v: string) => void }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        value={value ?? ''}
+        onChange={(e) => {
+          setBroken(false);
+          onChange(e.target.value);
+        }}
+        placeholder="https://…"
+      />
+      {looksLikeUrl(value) && !broken && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt=""
+          className="mt-2 h-16 w-auto rounded border border-border object-cover"
+          onError={() => setBroken(true)}
+        />
+      )}
+    </div>
+  );
+}
 
 export default function BannersPage() {
   const { adminFetch } = useAdminAuth();
@@ -64,6 +143,11 @@ export default function BannersPage() {
       subtitle: banner.subtitle ?? '',
       cta_text: banner.cta_text ?? '',
       cta_link: banner.cta_link ?? '',
+      image_url_desktop: banner.image_url_desktop ?? '',
+      image_url_mobile: banner.image_url_mobile ?? '',
+      countdown_end: banner.countdown_end ?? '',
+      show_countdown: banner.show_countdown,
+      bg_color: banner.bg_color ?? '',
       bg_style: banner.bg_style,
       is_active: banner.is_active,
     });
@@ -153,6 +237,7 @@ export default function BannersPage() {
               <th className={th}>Subtitle</th>
               <th className={th}>CTA Text</th>
               <th className={th}>CTA Link</th>
+              <th className={th}>Media</th>
               <th className={th}>Sort</th>
               <th className={th}>Active</th>
               <th className={th}></th>
@@ -166,6 +251,15 @@ export default function BannersPage() {
                 <td className={`${td} max-w-[200px] truncate text-ink-dim`}>{b.subtitle || '—'}</td>
                 <td className={`${td} text-ink-dim`}>{b.cta_text || '—'}</td>
                 <td className={`${td} max-w-[160px] truncate text-ink-dim`}>{b.cta_link || '—'}</td>
+                <td className={td}>
+                  <div className="flex items-center gap-1">
+                    {(b.image_url_desktop || b.image_url_mobile) && <Badge tone="purple">Image</Badge>}
+                    {b.show_countdown && b.countdown_end && <Badge tone="primary">Countdown</Badge>}
+                    {!b.image_url_desktop && !b.image_url_mobile && !(b.show_countdown && b.countdown_end) && (
+                      <span className="text-ink-faint">—</span>
+                    )}
+                  </div>
+                </td>
                 <td className={td}>
                   <div className="flex items-center gap-1">
                     <IconButton title="Move up" onClick={() => move(i, -1)}>
@@ -212,6 +306,8 @@ export default function BannersPage() {
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Banner' : 'Add Banner'}>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <BannerPreview form={form} />
+
           <div>
             <Label>Title</Label>
             <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
@@ -230,8 +326,48 @@ export default function BannersPage() {
               <Input value={form.cta_link} onChange={(e) => setForm({ ...form, cta_link: e.target.value })} />
             </div>
           </div>
+
+          <ImageField
+            label="Desktop Image URL"
+            value={form.image_url_desktop}
+            onChange={(v) => setForm({ ...form, image_url_desktop: v })}
+          />
+          <ImageField
+            label="Mobile Image URL"
+            value={form.image_url_mobile}
+            onChange={(v) => setForm({ ...form, image_url_mobile: v })}
+          />
+
           <div>
-            <Label>Background Style</Label>
+            <Label>Countdown Ends</Label>
+            <Input
+              type="datetime-local"
+              value={isoToLocalInput(form.countdown_end)}
+              onChange={(e) => setForm({ ...form, countdown_end: localInputToIso(e.target.value) })}
+            />
+            <div className="mt-2">
+              <Toggle checked={!!form.show_countdown} onChange={(v) => setForm({ ...form, show_countdown: v })} label="Show countdown" />
+            </div>
+          </div>
+
+          <div>
+            <Label>Background Color</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                value={form.bg_color}
+                onChange={(e) => setForm({ ...form, bg_color: e.target.value })}
+                placeholder="#627EEA"
+                className="flex-1"
+              />
+              <span
+                className="h-11 w-11 shrink-0 rounded-lg border border-border"
+                style={{ background: form.bg_color || 'transparent' }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Background Style (used when no image is set)</Label>
             <Select value={form.bg_style} onChange={(e) => setForm({ ...form, bg_style: e.target.value })}>
               {BG_STYLES.map((s) => (
                 <option key={s} value={s}>

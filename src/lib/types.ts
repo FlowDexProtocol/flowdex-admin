@@ -16,6 +16,11 @@ export interface CmsBanner {
   cta_text: string | null;
   cta_link: string | null;
   image_url: string | null;
+  image_url_desktop: string | null;
+  image_url_mobile: string | null;
+  countdown_end: string | null;
+  show_countdown: boolean;
+  bg_color: string | null;
   bg_style: string;
   sort_order: number;
   is_active: boolean;
@@ -29,6 +34,11 @@ export interface CmsBannerPayload {
   cta_text?: string;
   cta_link?: string;
   image_url?: string;
+  image_url_desktop?: string;
+  image_url_mobile?: string;
+  countdown_end?: string;
+  show_countdown?: boolean;
+  bg_color?: string;
   bg_style?: string;
   sort_order?: number;
   is_active?: boolean;

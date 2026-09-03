@@ -275,6 +275,7 @@ export const unpublishCmsBlogPost = (token: string, id: number) =>
   request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}/unpublish`, { method: 'POST', token });
 
 // ── CMS: Page Content ──
+export const getCmsPages = (token: string) => request<string[]>('/admin/cms/pages', { token });
 export const getCmsPageContent = (token: string, page: string) => request<CmsPageContent>(`/admin/cms/page/${page}`, { token });
 export const setCmsPageField = (token: string, page: string, section: string, field: string, value: string) =>
   request<{ success: boolean; content: { page: string; section: string; field: string; value: string } }>(
