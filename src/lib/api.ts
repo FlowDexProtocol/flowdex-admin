@@ -10,6 +10,7 @@ import type {
   AdminOverrideLog,
   AdminPurchase,
   AdminReferral,
+  AdminUser,
   AuditLogEntry,
   BackupCodesResponse,
   BurnsSummary,
@@ -18,6 +19,10 @@ import type {
   ChangePasswordResponse,
   CityStat,
   ClaimTierStats,
+  CreateAdminUserPayload,
+  CreateAdminUserResponse,
+  Reset2FAResponse,
+  UpdateAdminUserPayload,
   CmsBanner,
   CmsBannerPayload,
   CmsBlogPost,
@@ -146,6 +151,23 @@ export const adminChangePassword = (token: string, payload: ChangePasswordPayloa
   request<ChangePasswordResponse>('/admin/change-password', { method: 'POST', body: payload, token });
 export const adminGenerateBackupCodes = (token: string) =>
   request<BackupCodesResponse>('/admin/2fa/generate-backup-codes', { method: 'POST', token });
+
+// ── Admin user management (super_admin only) ──
+export const getAdminUsers = (token: string) => request<AdminUser[]>('/admin/users', { token });
+export const createAdminUser = (token: string, payload: CreateAdminUserPayload) =>
+  request<CreateAdminUserResponse>('/admin/users', { method: 'POST', body: payload, token });
+export const updateAdminUser = (token: string, id: number, payload: UpdateAdminUserPayload) =>
+  request<{ success: boolean; user?: AdminUser; error?: string }>(`/admin/users/${id}`, { method: 'PUT', body: payload, token });
+export const deleteAdminUser = (token: string, id: number) =>
+  request<{ success: boolean; error?: string }>(`/admin/users/${id}`, { method: 'DELETE', token });
+export const resetAdminUserPassword = (token: string, id: number, newPassword: string) =>
+  request<{ success: boolean; error?: string }>(`/admin/users/${id}/reset-password`, {
+    method: 'POST',
+    body: { new_password: newPassword },
+    token,
+  });
+export const resetAdminUser2FA = (token: string, id: number) =>
+  request<Reset2FAResponse>(`/admin/users/${id}/reset-2fa`, { method: 'POST', token });
 
 // ── Dashboard ──
 export const getDashboard = (token: string) => request<DashboardData>('/admin/dashboard', { token });

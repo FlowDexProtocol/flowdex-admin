@@ -156,6 +156,50 @@ export interface LoginResponse {
   error?: string;
 }
 
+// ── Admin users / RBAC ──
+// JWT payload is { user_id, username, role } — role isn't in LoginResponse
+// itself, it's decoded client-side from the token (see admin-auth-context).
+export type AdminRole = 'super_admin' | 'editor' | 'viewer';
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  role: AdminRole;
+  display_name: string | null;
+  email?: string | null;
+  is_active: boolean;
+  last_login: string | null;
+}
+
+export interface CreateAdminUserPayload {
+  username: string;
+  password: string;
+  role: AdminRole;
+  display_name?: string;
+  email?: string;
+}
+
+export interface CreateAdminUserResponse {
+  success: boolean;
+  user?: AdminUser;
+  // Shown once — the backend never returns this again after creation.
+  totp_secret?: string;
+  error?: string;
+}
+
+export interface UpdateAdminUserPayload {
+  role?: AdminRole;
+  display_name?: string;
+  is_active?: boolean;
+  email?: string;
+}
+
+export interface Reset2FAResponse {
+  success: boolean;
+  totp_secret?: string;
+  error?: string;
+}
+
 export interface ChangePasswordPayload {
   current_password: string;
   new_password: string;

@@ -9,11 +9,26 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { adminLogin, ApiError } from '@/lib/api';
-import type { LoginPayload } from '@/lib/types';
+import type { AdminRole, LoginPayload } from '@/lib/types';
+
+// The JWT itself is the source of truth for role/user_id — LoginResponse
+// only carries {success, token}. No signature verification here: this is
+// purely for UI display/gating decisions, the backend re-checks on every
+// request regardless of what the client thinks the role is.
+function decodeJwtPayload(token: string): { user_id?: number; username?: string; role?: string } | null {
+  try {
+    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch {
+    return null;
+  }
+}
 
 interface AdminAuthContextValue {
   token: string | null;
   username: string | null;
+  userId: number | null;
+  role: AdminRole | null;
   isAuthenticated: boolean;
   isLoggingIn: boolean;
   loginError: string | null;
@@ -72,10 +87,16 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     [token, logout]
   );
 
+  const decoded = useMemo(() => (token ? decodeJwtPayload(token) : null), [token]);
+  const userId = decoded?.user_id ?? null;
+  const role = (decoded?.role as AdminRole | undefined) ?? null;
+
   const value = useMemo<AdminAuthContextValue>(
     () => ({
       token,
       username,
+      userId,
+      role,
       isAuthenticated: !!token,
       isLoggingIn,
       loginError,
@@ -83,7 +104,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       logout,
       adminFetch,
     }),
-    [token, username, isLoggingIn, loginError, login, logout, adminFetch]
+    [token, username, userId, role, isLoggingIn, loginError, login, logout, adminFetch]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

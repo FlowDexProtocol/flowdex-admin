@@ -1,20 +1,29 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/context/admin-auth-context';
-import Sidebar from './Sidebar';
+import Sidebar, { isPathAllowed } from './Sidebar';
 import NotificationBell from './NotificationBell';
 import { Spinner } from './ui';
 
 export default function AdminShell({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAdminAuth();
+  const { isAuthenticated, role } = useAdminAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
   }, [isAuthenticated, router]);
+
+  // A viewer/editor navigating straight to a restricted URL (not just
+  // clicking a hidden sidebar link) gets bounced to the dashboard.
+  useEffect(() => {
+    if (isAuthenticated && role && !isPathAllowed(pathname, role)) {
+      router.replace('/');
+    }
+  }, [isAuthenticated, role, pathname, router]);
 
   if (!isAuthenticated) {
     return (
