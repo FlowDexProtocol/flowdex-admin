@@ -8,7 +8,7 @@ import NotificationBell from './NotificationBell';
 import { Spinner } from './ui';
 
 export default function AdminShell({ children }: { children: ReactNode }) {
-  const { isAuthenticated, role } = useAdminAuth();
+  const { isAuthenticated, role, displayName, username } = useAdminAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,6 +51,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             <span className="text-ink">Flow</span>
             <span className="text-primary">Dex</span>
             <span className="text-ink"> Admin</span>
+          </span>
+          <span className="hidden truncate text-sm font-medium text-ink-dim sm:inline">
+            Welcome, {displayName || username}
           </span>
           <div className="ml-auto">
             <NotificationBell />

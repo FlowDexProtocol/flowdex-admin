@@ -4,7 +4,15 @@ import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
-import { adminChangePassword, adminGenerateBackupCodes, getCmsPageContent, setCmsPageField, ApiError } from '@/lib/api';
+import {
+  adminChangePassword,
+  adminGenerateBackupCodes,
+  getCmsPageContent,
+  setCmsPageField,
+  putSendGridSettings,
+  postTestEmail,
+  ApiError,
+} from '@/lib/api';
 import { Button, Card, ErrorNote, Input, Label, PageHeader, SuccessNote, Toggle } from '@/components/ui';
 
 const ROLE_LABEL: Record<string, string> = { super_admin: 'Super Admin', editor: 'Editor', viewer: 'Viewer' };
@@ -33,18 +41,8 @@ function AccountInfoCard() {
   );
 }
 
-// Both the password-change and backup-codes routes are now super_admin-only
-// at the backend (a route-level gate on the existing single shared
-// endpoints — there's no separate "change my own password regardless of
-// role" endpoint in this batch's backend work). The task's own Settings-
-// page spec describes "Change My Password" as if every role has it, which
-// doesn't actually agree with that backend decision. Rather than silently
-// hiding the card for non-super-admins (which would contradict the task's
-// literal ask) or pretending it always works, it stays visible for every
-// role and surfaces the backend's real 403 as an inline error — with a
-// heads-up note for non-super-admins set before they even try.
 function ChangePasswordCard() {
-  const { adminFetch, role } = useAdminAuth();
+  const { adminFetch } = useAdminAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -85,9 +83,6 @@ function ChangePasswordCard() {
   return (
     <Card>
       <p className="text-sm font-semibold text-ink">Change Password</p>
-      {role && role !== 'super_admin' && (
-        <p className="mt-1.5 text-xs text-amber">Currently restricted to super admins on the backend — this will likely fail.</p>
-      )}
       <form onSubmit={handleSubmit} className="mt-4 space-y-4">
         <div>
           <Label>Current Password</Label>
@@ -132,7 +127,7 @@ function ChangePasswordCard() {
 }
 
 function BackupCodesCard() {
-  const { adminFetch, role } = useAdminAuth();
+  const { adminFetch } = useAdminAuth();
   const [generating, setGenerating] = useState(false);
   const [codes, setCodes] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -157,9 +152,6 @@ function BackupCodesCard() {
         Generate one-time backup codes to use in place of your 2FA code if you lose access to your authenticator.
         Generating a new batch invalidates any previous codes.
       </p>
-      {role && role !== 'super_admin' && (
-        <p className="mt-1.5 text-xs text-amber">Currently restricted to super admins on the backend — this will likely fail.</p>
-      )}
 
       {error && (
         <div className="mt-4">
@@ -187,16 +179,11 @@ function BackupCodesCard() {
   );
 }
 
-// Only From Email / Daily Digest / Threshold are genuinely persisted here,
-// via the existing CMS page-content mechanism (page='global', section=
-// 'email'). The SendGrid API key is a real secret — there is no backend
-// endpoint in this batch that stores arbitrary secrets, and writing one to
-// a CMS text field the editor UI displays in plaintext would be a real
-// security regression, not a shortcut. It's shown read-only with an
-// explanation instead of a fake Save button. "Send Test Email" has no
-// corresponding backend endpoint in this batch either (no POST
-// /admin/email/test) — shown disabled with a note rather than wired to
-// something that doesn't exist.
+// From Email / Daily Digest / Threshold persist via the existing CMS
+// page-content mechanism (page='global', section='email'). The SendGrid API
+// key persists via PUT /admin/settings/sendgrid into cms_settings — the
+// input is write-only (the backend never returns the stored key back to the
+// client), matching how the password field below behaves.
 function EmailSettingsCard() {
   const { adminFetch } = useAdminAuth();
   const { showToast } = useToast();
@@ -206,6 +193,15 @@ function EmailSettingsCard() {
   const [threshold, setThreshold] = useState('10000');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [sendgridKey, setSendgridKey] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [testSuccess, setTestSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -242,16 +238,68 @@ function EmailSettingsCard() {
     }
   }
 
+  async function handleSaveKey() {
+    setKeyError(null);
+    if (!sendgridKey.trim()) {
+      setKeyError('Enter a SendGrid API key first.');
+      return;
+    }
+    setSavingKey(true);
+    try {
+      await adminFetch((token) => putSendGridSettings(token, { api_key: sendgridKey.trim() }));
+      setSendgridKey('');
+      showToast('success', 'SendGrid API key saved');
+    } catch (err) {
+      setKeyError(err instanceof ApiError ? err.message : 'Failed to save SendGrid API key');
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  async function handleSendTest() {
+    setTestError(null);
+    setTestSuccess(null);
+    if (!testEmailTo.trim()) {
+      setTestError('Enter an email address to send the test to.');
+      return;
+    }
+    setSendingTest(true);
+    try {
+      const res = await adminFetch((token) => postTestEmail(token, { to_email: testEmailTo.trim() }));
+      setTestSuccess(res.message || 'Test email sent.');
+    } catch (err) {
+      setTestError(err instanceof ApiError ? err.message : 'Failed to send test email');
+    } finally {
+      setSendingTest(false);
+    }
+  }
+
   return (
     <Card className="lg:col-span-2">
       <p className="text-sm font-semibold text-ink">Email</p>
       <div className="mt-4 space-y-4">
         <div>
           <Label>SendGrid API Key</Label>
-          <Input value="Set via SENDGRID_API_KEY" disabled className="opacity-60" />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              type="password"
+              value={sendgridKey}
+              onChange={(e) => setSendgridKey(e.target.value)}
+              placeholder="SG.•••••••••••••••••••••"
+              autoComplete="off"
+            />
+            <Button onClick={handleSaveKey} disabled={savingKey} className="shrink-0">
+              {savingKey ? 'Saving…' : 'Save Key'}
+            </Button>
+          </div>
+          {keyError && (
+            <div className="mt-1.5">
+              <ErrorNote>{keyError}</ErrorNote>
+            </div>
+          )}
           <p className="mt-1.5 text-xs text-ink-faint">
-            Set via the <code>SENDGRID_API_KEY</code> environment variable on the server — cannot be changed from this
-            dashboard for security.
+            Stored server-side; falls back to the <code>SENDGRID_API_KEY</code> environment variable if unset. The
+            saved key is never shown back here — leave blank to keep the current one.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -277,14 +325,32 @@ function EmailSettingsCard() {
           <Button onClick={handleSave} disabled={saving || loading}>
             {saving ? 'Saving…' : 'Save Email Settings'}
           </Button>
-          <Button variant="secondary" disabled title="No test-email endpoint exists on the backend yet">
-            Send Test Email
-          </Button>
         </div>
-        <p className="text-xs text-ink-faint">
-          &ldquo;Send Test Email&rdquo; needs a backend endpoint (e.g. <code>POST /admin/email/test</code>) that
-          doesn&rsquo;t exist yet — disabled until one is added.
-        </p>
+
+        <div className="border-t border-border pt-4">
+          <Label>Send Test Email</Label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              type="email"
+              value={testEmailTo}
+              onChange={(e) => setTestEmailTo(e.target.value)}
+              placeholder="you@example.com"
+            />
+            <Button variant="secondary" onClick={handleSendTest} disabled={sendingTest} className="shrink-0">
+              {sendingTest ? 'Sending…' : 'Send Test Email'}
+            </Button>
+          </div>
+          {testError && (
+            <div className="mt-1.5">
+              <ErrorNote>{testError}</ErrorNote>
+            </div>
+          )}
+          {testSuccess && (
+            <div className="mt-1.5">
+              <SuccessNote>{testSuccess}</SuccessNote>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );

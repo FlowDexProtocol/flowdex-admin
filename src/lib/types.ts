@@ -157,8 +157,9 @@ export interface LoginResponse {
 }
 
 // ── Admin users / RBAC ──
-// JWT payload is { user_id, username, role } — role isn't in LoginResponse
-// itself, it's decoded client-side from the token (see admin-auth-context).
+// JWT payload is { user_id, username, role, display_name } — none of these
+// are in LoginResponse itself, they're decoded client-side from the token
+// (see admin-auth-context).
 export type AdminRole = 'super_admin' | 'editor' | 'viewer';
 
 export interface AdminUser {
@@ -214,6 +215,26 @@ export interface ChangePasswordResponse {
 export interface BackupCodesResponse {
   success: boolean;
   codes: string[];
+  error?: string;
+}
+
+export interface SendGridSettingsPayload {
+  api_key: string;
+}
+
+export interface SendGridSettingsResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface TestEmailPayload {
+  to_email: string;
+}
+
+export interface TestEmailResponse {
+  success: boolean;
+  message?: string;
   error?: string;
 }
 

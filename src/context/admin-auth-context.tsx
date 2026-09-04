@@ -15,7 +15,9 @@ import type { AdminRole, LoginPayload } from '@/lib/types';
 // only carries {success, token}. No signature verification here: this is
 // purely for UI display/gating decisions, the backend re-checks on every
 // request regardless of what the client thinks the role is.
-function decodeJwtPayload(token: string): { user_id?: number; username?: string; role?: string } | null {
+function decodeJwtPayload(
+  token: string
+): { user_id?: number; username?: string; role?: string; display_name?: string } | null {
   try {
     const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
     return JSON.parse(atob(base64));
@@ -27,6 +29,7 @@ function decodeJwtPayload(token: string): { user_id?: number; username?: string;
 interface AdminAuthContextValue {
   token: string | null;
   username: string | null;
+  displayName: string | null;
   userId: number | null;
   role: AdminRole | null;
   isAuthenticated: boolean;
@@ -90,11 +93,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const decoded = useMemo(() => (token ? decodeJwtPayload(token) : null), [token]);
   const userId = decoded?.user_id ?? null;
   const role = (decoded?.role as AdminRole | undefined) ?? null;
+  const displayName = decoded?.display_name ?? null;
 
   const value = useMemo<AdminAuthContextValue>(
     () => ({
       token,
       username,
+      displayName,
       userId,
       role,
       isAuthenticated: !!token,
@@ -104,7 +109,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       logout,
       adminFetch,
     }),
-    [token, username, userId, role, isLoggingIn, loginError, login, logout, adminFetch]
+    [token, username, displayName, userId, role, isLoggingIn, loginError, login, logout, adminFetch]
   );
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>;

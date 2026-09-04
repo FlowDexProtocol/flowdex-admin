@@ -48,7 +48,11 @@ import type {
   PaginatedResponse,
   ReconciliationResult,
   ReconciliationRunResult,
+  SendGridSettingsPayload,
+  SendGridSettingsResponse,
   SupplyStatus,
+  TestEmailPayload,
+  TestEmailResponse,
   TerminalCreditsSummary,
   Tier,
   Withdrawal,
@@ -146,11 +150,20 @@ export async function downloadCsv(path: string, token: string, filename: string)
 }
 
 // ── Auth ──
+// change-my-password / my-backup-codes are available to every role (unlike
+// the older change-password / 2fa/generate-backup-codes routes, kept on the
+// backend only for super_admin backward compat).
 export const adminLogin = (payload: LoginPayload) => request<LoginResponse>('/admin/login', { method: 'POST', body: payload });
 export const adminChangePassword = (token: string, payload: ChangePasswordPayload) =>
-  request<ChangePasswordResponse>('/admin/change-password', { method: 'POST', body: payload, token });
+  request<ChangePasswordResponse>('/admin/change-my-password', { method: 'POST', body: payload, token });
 export const adminGenerateBackupCodes = (token: string) =>
-  request<BackupCodesResponse>('/admin/2fa/generate-backup-codes', { method: 'POST', token });
+  request<BackupCodesResponse>('/admin/my-backup-codes', { method: 'POST', token });
+
+// ── Settings (super_admin only) ──
+export const putSendGridSettings = (token: string, payload: SendGridSettingsPayload) =>
+  request<SendGridSettingsResponse>('/admin/settings/sendgrid', { method: 'PUT', body: payload, token });
+export const postTestEmail = (token: string, payload: TestEmailPayload) =>
+  request<TestEmailResponse>('/admin/settings/test-email', { method: 'POST', body: payload, token });
 
 // ── Admin user management (super_admin only) ──
 export const getAdminUsers = (token: string) => request<AdminUser[]>('/admin/users', { token });
