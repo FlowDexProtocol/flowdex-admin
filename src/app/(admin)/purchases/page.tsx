@@ -28,14 +28,17 @@ const CURRENCIES = ['ETH', 'USDT', 'USDC', 'BNB', 'SOL', 'BTC', 'TRX'];
 const CHAINS = ['ethereum', 'bsc', 'polygon', 'arbitrum', 'base', 'solana', 'bitcoin', 'tron'];
 const STATUSES = ['intent', 'pending', 'confirmed', 'needs_pricing', 'failed', 'cancelled', 'refunded'];
 
-const STATUS_TONE: Record<string, 'green' | 'red' | 'yellow' | 'primary' | 'neutral'> = {
+// pending/needs_pricing/refunded are all "not resolved yet" states — amber,
+// consistent with every other pending/warning badge in the app. confirmed
+// is the only success state (green); failed/cancelled are red.
+const STATUS_TONE: Record<string, 'green' | 'red' | 'amber' | 'primary' | 'neutral'> = {
   confirmed: 'green',
-  pending: 'primary',
+  pending: 'amber',
   intent: 'neutral',
-  needs_pricing: 'yellow',
+  needs_pricing: 'amber',
   failed: 'red',
   cancelled: 'red',
-  refunded: 'yellow',
+  refunded: 'amber',
 };
 
 export default function PurchasesPage() {

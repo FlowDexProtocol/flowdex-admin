@@ -77,7 +77,11 @@ export default function DashboardPage() {
               sub={daily?.message}
               tone="green"
             />
-            <StatCard label="Total Buyers" value={formatTokens(dashboard.total_buyers, 0)} />
+            <StatCard
+              label="Active Buyers"
+              value={formatTokens(dashboard.total_buyers, 0)}
+              sub={`${formatTokens(dashboard.total_wallets_connected, 0)} wallets connected`}
+            />
             <StatCard
               label="Today's New Buyers"
               value={daily?.new_buyers !== undefined ? formatTokens(daily.new_buyers, 0) : daily?.message ? '—' : '…'}
@@ -132,7 +136,7 @@ export default function DashboardPage() {
             <Card>
               <p className="mb-3 text-xs uppercase tracking-widest text-ink-dim">Webhook Health</p>
               <div className="flex items-center gap-2">
-                <Badge tone={dashboard.webhook_health.status === 'healthy' ? 'green' : dashboard.webhook_health.status === 'warning' ? 'yellow' : 'red'}>
+                <Badge tone={dashboard.webhook_health.status === 'healthy' ? 'green' : dashboard.webhook_health.status === 'warning' ? 'amber' : 'red'}>
                   {dashboard.webhook_health.status}
                 </Badge>
                 <span className="text-xs text-ink-dim">{dashboard.webhook_health.minutes_since_last}m since last</span>

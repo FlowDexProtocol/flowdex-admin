@@ -232,7 +232,11 @@ export interface ReconciliationRunResult {
 export interface DashboardData {
   success: boolean;
   total_raised: number;
+  // Wallets with at least one CONFIRMED purchase (backend fix, same batch).
   total_buyers: number;
+  // Every row in the buyers table, including intent-only/never-paid wallets
+  // — informational only, not the headline number.
+  total_wallets_connected: number;
   active_tier: Tier | null;
   last_reconciliation: ReconciliationResult | null;
   last_balance_snapshot: BalanceSnapshot | null;

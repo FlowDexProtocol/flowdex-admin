@@ -39,7 +39,9 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </svg>
           </button>
           <span className="text-sm font-bold lg:hidden">
-            FlowDex <span className="text-primary">Admin</span>
+            <span className="text-ink">Flow</span>
+            <span className="text-primary">Dex</span>
+            <span className="text-ink"> Admin</span>
           </span>
           <div className="ml-auto">
             <NotificationBell />

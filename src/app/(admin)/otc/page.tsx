@@ -231,7 +231,7 @@ export default function OtcPage() {
                     <Mono>{formatTokens(a.total_tokens_allocated)}</Mono>
                   </td>
                   <td className={td}>
-                    <Badge tone={a.drip_status === 'active' ? 'green' : a.drip_status === 'paused' ? 'yellow' : 'neutral'}>
+                    <Badge tone={a.drip_status === 'active' ? 'green' : a.drip_status === 'paused' ? 'amber' : 'neutral'}>
                       {a.drip_status}
                     </Badge>
                   </td>

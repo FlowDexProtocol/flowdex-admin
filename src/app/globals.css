@@ -3,22 +3,22 @@
 :root {
   --color-bg: #060d18;
   --color-bg-soft: #081222;
-  --color-card: #0b1f3a;
-  --color-card-hover: #0e274a;
-  --color-border: #16294a;
+  --color-card: #0b1a2e;
+  --color-card-hover: #11253f;
+  --color-border: #1a2a3f;
   --color-ink: #e8ecf1;
-  --color-ink-dim: #8ca0be;
+  --color-ink-dim: #8899aa;
   --color-ink-faint: #5b6f8c;
   --color-primary: #627eea;
   --color-primary-dim: rgba(98, 126, 234, 0.14);
   --color-green: #00ff88;
-  --color-green-dim: rgba(0, 255, 136, 0.14);
+  --color-green-dim: rgba(0, 255, 136, 0.15);
   --color-red: #ef4444;
-  --color-red-dim: rgba(239, 68, 68, 0.14);
+  --color-red-dim: rgba(239, 68, 68, 0.15);
   --color-purple: #9945ff;
   --color-purple-dim: rgba(153, 69, 255, 0.14);
-  --color-yellow: #eab308;
-  --color-yellow-dim: rgba(234, 179, 8, 0.14);
+  --color-amber: #f59e0b;
+  --color-amber-dim: rgba(245, 158, 11, 0.15);
 }
 
 @theme inline {
@@ -38,8 +38,8 @@
   --color-red-dim: var(--color-red-dim);
   --color-purple: var(--color-purple);
   --color-purple-dim: var(--color-purple-dim);
-  --color-yellow: var(--color-yellow);
-  --color-yellow-dim: var(--color-yellow-dim);
+  --color-amber: var(--color-amber);
+  --color-amber-dim: var(--color-amber-dim);
   --font-sans: var(--font-dm-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }

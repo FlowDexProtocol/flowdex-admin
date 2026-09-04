@@ -53,7 +53,7 @@ export function Button({
   );
 }
 
-type BadgeTone = 'primary' | 'green' | 'red' | 'purple' | 'yellow' | 'neutral';
+type BadgeTone = 'primary' | 'green' | 'red' | 'purple' | 'amber' | 'neutral';
 
 export function Badge({ children, tone = 'primary', className = '' }: { children: ReactNode; tone?: BadgeTone; className?: string }) {
   const tones: Record<BadgeTone, string> = {
@@ -61,7 +61,7 @@ export function Badge({ children, tone = 'primary', className = '' }: { children
     green: 'bg-green-dim text-green',
     red: 'bg-red-dim text-red',
     purple: 'bg-purple-dim text-purple',
-    yellow: 'bg-yellow-dim text-yellow',
+    amber: 'bg-amber-dim text-amber',
     neutral: 'bg-white/5 text-ink-dim',
   };
   return (
@@ -221,7 +221,7 @@ export function StatCard({
   return (
     <Card>
       <p className="text-xs uppercase tracking-widest text-ink-dim">{label}</p>
-      <div className={`mt-1.5 text-2xl font-bold ${toneClass[tone]}`}>{value}</div>
+      <div className={`mt-1.5 font-mono text-2xl font-bold ${toneClass[tone]}`}>{value}</div>
       {sub && <p className="mt-1 text-xs text-ink-faint">{sub}</p>}
     </Card>
   );
@@ -312,7 +312,7 @@ export function Pagination({
   );
 }
 
-export const th = 'px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
+export const th = 'bg-card-hover px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
 export const td = 'px-3 py-2.5 align-middle';
 
 export function TableShell({ children }: { children: ReactNode }) {
