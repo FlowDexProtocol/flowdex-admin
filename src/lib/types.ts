@@ -218,11 +218,11 @@ export interface BackupCodesResponse {
   error?: string;
 }
 
-export interface SendGridSettingsPayload {
+export interface ResendSettingsPayload {
   api_key: string;
 }
 
-export interface SendGridSettingsResponse {
+export interface ResendSettingsResponse {
   success: boolean;
   message?: string;
   error?: string;

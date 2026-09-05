@@ -9,7 +9,7 @@ import {
   adminGenerateBackupCodes,
   getCmsPageContent,
   setCmsPageField,
-  putSendGridSettings,
+  putResendSettings,
   postTestEmail,
   ApiError,
 } from '@/lib/api';
@@ -180,8 +180,8 @@ function BackupCodesCard() {
 }
 
 // From Email / Daily Digest / Threshold persist via the existing CMS
-// page-content mechanism (page='global', section='email'). The SendGrid API
-// key persists via PUT /admin/settings/sendgrid into cms_settings — the
+// page-content mechanism (page='global', section='email'). The Resend API
+// key persists via PUT /admin/settings/resend into cms_settings — the
 // input is write-only (the backend never returns the stored key back to the
 // client), matching how the password field below behaves.
 function EmailSettingsCard() {
@@ -194,7 +194,7 @@ function EmailSettingsCard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [sendgridKey, setSendgridKey] = useState('');
+  const [resendKey, setResendKey] = useState('');
   const [savingKey, setSavingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
 
@@ -240,17 +240,17 @@ function EmailSettingsCard() {
 
   async function handleSaveKey() {
     setKeyError(null);
-    if (!sendgridKey.trim()) {
-      setKeyError('Enter a SendGrid API key first.');
+    if (!resendKey.trim()) {
+      setKeyError('Enter a Resend API key first.');
       return;
     }
     setSavingKey(true);
     try {
-      await adminFetch((token) => putSendGridSettings(token, { api_key: sendgridKey.trim() }));
-      setSendgridKey('');
-      showToast('success', 'SendGrid API key saved');
+      await adminFetch((token) => putResendSettings(token, { api_key: resendKey.trim() }));
+      setResendKey('');
+      showToast('success', 'Resend API key saved');
     } catch (err) {
-      setKeyError(err instanceof ApiError ? err.message : 'Failed to save SendGrid API key');
+      setKeyError(err instanceof ApiError ? err.message : 'Failed to save Resend API key');
     } finally {
       setSavingKey(false);
     }
@@ -279,13 +279,13 @@ function EmailSettingsCard() {
       <p className="text-sm font-semibold text-ink">Email</p>
       <div className="mt-4 space-y-4">
         <div>
-          <Label>SendGrid API Key</Label>
+          <Label>Resend API Key</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               type="password"
-              value={sendgridKey}
-              onChange={(e) => setSendgridKey(e.target.value)}
-              placeholder="SG.•••••••••••••••••••••"
+              value={resendKey}
+              onChange={(e) => setResendKey(e.target.value)}
+              placeholder="re_•••••••••••••••••••••"
               autoComplete="off"
             />
             <Button onClick={handleSaveKey} disabled={savingKey} className="shrink-0">
@@ -298,7 +298,7 @@ function EmailSettingsCard() {
             </div>
           )}
           <p className="mt-1.5 text-xs text-ink-faint">
-            Stored server-side; falls back to the <code>SENDGRID_API_KEY</code> environment variable if unset. The
+            Stored server-side; falls back to the <code>RESEND_API_KEY</code> environment variable if unset. The
             saved key is never shown back here — leave blank to keep the current one.
           </p>
         </div>

@@ -48,8 +48,8 @@ import type {
   PaginatedResponse,
   ReconciliationResult,
   ReconciliationRunResult,
-  SendGridSettingsPayload,
-  SendGridSettingsResponse,
+  ResendSettingsPayload,
+  ResendSettingsResponse,
   SupplyStatus,
   TestEmailPayload,
   TestEmailResponse,
@@ -160,8 +160,8 @@ export const adminGenerateBackupCodes = (token: string) =>
   request<BackupCodesResponse>('/admin/my-backup-codes', { method: 'POST', token });
 
 // ── Settings (super_admin only) ──
-export const putSendGridSettings = (token: string, payload: SendGridSettingsPayload) =>
-  request<SendGridSettingsResponse>('/admin/settings/sendgrid', { method: 'PUT', body: payload, token });
+export const putResendSettings = (token: string, payload: ResendSettingsPayload) =>
+  request<ResendSettingsResponse>('/admin/settings/resend', { method: 'PUT', body: payload, token });
 export const postTestEmail = (token: string, payload: TestEmailPayload) =>
   request<TestEmailResponse>('/admin/settings/test-email', { method: 'POST', body: payload, token });
 
