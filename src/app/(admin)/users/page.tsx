@@ -399,9 +399,13 @@ export default function UsersPage() {
 
       {loading && !users ? (
         <LoadingBlock />
-      ) : error && !users ? (
+      ) : error && !Array.isArray(users) ? (
         <ErrorNote>{error}</ErrorNote>
-      ) : !users || users.length === 0 ? (
+      ) : !Array.isArray(users) ? (
+        // Defensive: a malformed/unexpected API response shouldn't crash the
+        // whole page with "users.map is not a function" — fail gracefully.
+        <ErrorNote>Couldn&rsquo;t load admin users — unexpected response from the server.</ErrorNote>
+      ) : users.length === 0 ? (
         <EmptyState>No admin users yet.</EmptyState>
       ) : (
         <TableShell>
