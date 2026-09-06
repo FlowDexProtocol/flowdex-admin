@@ -34,7 +34,9 @@ import type {
   CmsPageContent,
   CmsTeamMember,
   CmsTeamPayload,
+  ChainStat,
   CountryStat,
+  DailyPurchaseStat,
   DailyStats,
   DashboardData,
   FinancialReport,
@@ -294,6 +296,11 @@ export const postWithdrawal = (token: string, payload: WithdrawalPayload) =>
 // ── Geo ──
 export const getStatsByCountry = (token: string) => request<CountryStat[]>('/admin/stats/by-country', { token });
 export const getStatsByCity = (token: string) => request<CityStat[]>('/admin/stats/by-city', { token });
+
+// ── Dashboard charts ──
+export const getStatsDaily = (token: string) => request<DailyPurchaseStat[]>('/admin/stats/daily', { token });
+export const getStatsByChain = (token: string) => request<ChainStat[]>('/admin/stats/by-chain', { token });
+export const getSubscriberCount = (token: string) => request<{ count: number }>('/admin/stats/subscribers', { token });
 
 // ── Audit Log ──
 export interface AuditFilters {

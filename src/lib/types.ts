@@ -507,6 +507,19 @@ export interface CityStat {
   volume: Numeric;
 }
 
+export interface DailyPurchaseStat {
+  date: string;
+  purchase_count: Numeric;
+  usd_raised: Numeric;
+  new_buyers: Numeric;
+}
+
+export interface ChainStat {
+  chain: string;
+  count: Numeric;
+  usd_total: Numeric;
+}
+
 export interface OtcAllocatePayload {
   investor_name: string;
   investor_wallet: string;

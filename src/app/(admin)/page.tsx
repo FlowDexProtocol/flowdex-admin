@@ -3,9 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useFetch } from '@/lib/hooks';
-import { getDashboard, getPublicDailyStats, getSupply } from '@/lib/api';
+import { getDashboard, getPublicDailyStats, getStatsByChain, getStatsDaily, getSubscriberCount, getSupply } from '@/lib/api';
 import { formatDateGmt4, formatPct, formatSecondsAgo, formatTokens, formatUsd, toNum } from '@/lib/format';
 import { Badge, Button, Card, ErrorNote, LoadingBlock, PageHeader, ProgressBar, StatCard } from '@/components/ui';
+import { BuyersDonutChart, PurchasesLineChart, RevenueBarChart } from '@/components/DashboardCharts';
 
 const REFRESH_INTERVAL_MS = 60000;
 
@@ -24,6 +25,21 @@ export default function DashboardPage() {
     REFRESH_INTERVAL_MS
   );
   const { data: daily, reload: reloadDaily } = useFetch(() => getPublicDailyStats(), [], REFRESH_INTERVAL_MS);
+  const { data: dailyStats, reload: reloadDailyStats } = useFetch(
+    () => adminFetch((token) => getStatsDaily(token)),
+    [],
+    REFRESH_INTERVAL_MS
+  );
+  const { data: chainStats, reload: reloadChainStats } = useFetch(
+    () => adminFetch((token) => getStatsByChain(token)),
+    [],
+    REFRESH_INTERVAL_MS
+  );
+  const { data: subscribers, reload: reloadSubscribers } = useFetch(
+    () => adminFetch((token) => getSubscriberCount(token)),
+    [],
+    REFRESH_INTERVAL_MS
+  );
 
   const [lastUpdated, setLastUpdated] = useState(() => Date.now());
   const [secondsAgo, setSecondsAgo] = useState(0);
@@ -40,7 +56,14 @@ export default function DashboardPage() {
 
   async function handleRefresh() {
     setRefreshing(true);
-    await Promise.all([reloadDashboard(), reloadSupply(), reloadDaily()]);
+    await Promise.all([
+      reloadDashboard(),
+      reloadSupply(),
+      reloadDaily(),
+      reloadDailyStats(),
+      reloadChainStats(),
+      reloadSubscribers(),
+    ]);
     setLastUpdated(Date.now());
     setRefreshing(false);
   }
@@ -88,6 +111,26 @@ export default function DashboardPage() {
               tone="green"
             />
           </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <StatCard label="Email Subscribers" value={subscribers ? formatTokens(subscribers.count, 0) : '…'} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card>
+              <p className="mb-4 text-xs uppercase tracking-widest text-ink-dim">Purchases Over Time (30 Days)</p>
+              <PurchasesLineChart data={dailyStats || []} />
+            </Card>
+            <Card>
+              <p className="mb-4 text-xs uppercase tracking-widest text-ink-dim">Revenue by Day (30 Days)</p>
+              <RevenueBarChart data={dailyStats || []} />
+            </Card>
+          </div>
+
+          <Card>
+            <p className="mb-4 text-xs uppercase tracking-widest text-ink-dim">Buyers by Chain</p>
+            <BuyersDonutChart data={chainStats || []} />
+          </Card>
 
           <Card>
             <div className="flex flex-wrap items-center justify-between gap-2">
