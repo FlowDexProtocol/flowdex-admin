@@ -369,6 +369,24 @@ export const setCmsPageField = (token: string, page: string, section: string, fi
     { method: 'PUT', body: { value }, token }
   );
 
+export interface CmsPageFieldUpdate {
+  page: string;
+  section: string;
+  field: string;
+  value: string;
+}
+export const bulkUpdateCmsPageFields = (token: string, updates: CmsPageFieldUpdate[]) =>
+  request<{ success: boolean; updated: number }>('/admin/cms/page/bulk-update', { method: 'POST', body: { updates }, token });
+
+// Deletion is destructive/irreversible — the backend restricts all three to
+// super_admin regardless of the router's editor-level default.
+export const deleteCmsPageField = (token: string, page: string, section: string, field: string) =>
+  request<{ success: boolean }>(`/admin/cms/page/${page}/${section}/${field}`, { method: 'DELETE', token });
+export const deleteCmsPageSection = (token: string, page: string, section: string) =>
+  request<{ success: boolean; deleted: number }>(`/admin/cms/page/${page}/${section}`, { method: 'DELETE', token });
+export const deleteCmsPage = (token: string, page: string) =>
+  request<{ success: boolean; deleted: number }>(`/admin/cms/page/${page}`, { method: 'DELETE', token });
+
 // ── CMS: Media ──
 export const getCmsMedia = (token: string) => request<CmsMedia[]>('/admin/cms/media', { token });
 export const createCmsMedia = (token: string, payload: CmsMediaPayload) =>
