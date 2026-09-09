@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useDebouncedValue, useFetch } from '@/lib/hooks';
 import { exportReferralsCsv, getAdminReferrals, getBurns, getTerminalCredits } from '@/lib/api';
-import { formatDate, formatTokens, formatUsd, toNum, truncateWallet } from '@/lib/format';
+import { formatDate, formatTokens, formatUsd, toNum } from '@/lib/format';
 import {
   Badge,
   Button,
+  CopyableWallet,
   EmptyState,
   ErrorNote,
   Input,
@@ -137,10 +138,14 @@ export default function ReferralsPage() {
                     <tr key={r.wallet}>
                       <td className={`${td} text-ink-faint`}>{i + 1}</td>
                       <td className={td}>
-                        <Mono>{truncateWallet(r.wallet)}</Mono>
+                        <CopyableWallet wallet={r.wallet} />
                       </td>
-                      <td className={`${td} text-ink-dim`}>{r.referred}</td>
-                      <td className={`${td} text-ink-dim`}>{r.converted}</td>
+                      <td className={td}>
+                        <Mono className="text-ink-dim">{r.referred}</Mono>
+                      </td>
+                      <td className={td}>
+                        <Mono className="text-ink-dim">{r.converted}</Mono>
+                      </td>
                       <td className={td}>
                         <Mono>{formatUsd(r.volume)}</Mono>
                       </td>
@@ -206,10 +211,10 @@ export default function ReferralsPage() {
                     {tableRows.map((r) => (
                       <tr key={r.id}>
                         <td className={td}>
-                          <Mono>{truncateWallet(r.referrer_wallet)}</Mono>
+                          <CopyableWallet wallet={r.referrer_wallet} />
                         </td>
                         <td className={td}>
-                          <Mono>{truncateWallet(r.referred_wallet)}</Mono>
+                          <CopyableWallet wallet={r.referred_wallet} />
                         </td>
                         <td className={`${td} text-ink-dim`}>{r.referred_by_code}</td>
                         <td className={td}>

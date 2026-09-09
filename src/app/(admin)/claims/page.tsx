@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useFetch } from '@/lib/hooks';
 import { exportClaimsCsv, getAdminClaims, getAdminTiers, getClaimStats } from '@/lib/api';
-import { formatDate, formatPct, formatTokens, truncateWallet } from '@/lib/format';
+import { formatDate, formatPct, formatTokens } from '@/lib/format';
 import {
   Badge,
   Button,
   Card,
+  CopyableWallet,
   EmptyState,
   ErrorNote,
   Label,
@@ -148,13 +149,15 @@ export default function ClaimsPage() {
               {claims.map((c) => (
                 <tr key={c.id}>
                   <td className={td}>
-                    <Mono>{truncateWallet(c.buyer_wallet)}</Mono>
+                    <CopyableWallet wallet={c.buyer_wallet} />
                   </td>
                   <td className={`${td} text-ink-dim`}>{c.tier_name || `Tier ${c.tier_id}`}</td>
                   <td className={td}>
                     <Mono>{formatTokens(c.total_purchased_tokens)}</Mono>
                   </td>
-                  <td className={`${td} text-ink-dim`}>{formatPct(c.tge_percentage, 0)}</td>
+                  <td className={td}>
+                    <Mono className="text-ink-dim">{formatPct(c.tge_percentage, 0)}</Mono>
+                  </td>
                   <td className={td}>
                     <Mono>{formatTokens(c.total_claimable)}</Mono>
                   </td>

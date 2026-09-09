@@ -9,6 +9,7 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from 'react';
+import { truncateWallet } from '@/lib/format';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-2xl border border-border bg-card p-5 sm:p-6 ${className}`}>{children}</div>;
@@ -338,12 +339,15 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${open ? 'opacity-100' : 'opacity-0'}`}
         onClick={onClose}
       />
+      {/* h-full on mobile so the sheet fills the viewport; sm:max-h-[80vh] caps
+          desktop height so the body (not the whole modal) scrolls once its
+          content — e.g. the banner form's 9+ fields — exceeds that. */}
       <div
-        className={`relative flex h-full w-full flex-col overflow-y-auto border-border bg-card p-6 shadow-2xl transition-all sm:h-auto sm:max-w-md sm:rounded-2xl sm:border ${
+        className={`relative flex h-full max-h-full w-full flex-col border-border bg-card shadow-2xl transition-all sm:h-auto sm:max-h-[80vh] sm:max-w-md sm:rounded-2xl sm:border ${
           open ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
-        <div className="mb-4 flex items-center justify-between">
+        <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
           <h3 className="text-base font-bold text-ink">{title}</h3>
           <button
             onClick={onClose}
@@ -355,8 +359,99 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
             </svg>
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">{children}</div>
       </div>
+    </div>
+  );
+}
+
+// Truncated wallet address + click-to-copy — used anywhere a full wallet
+// address is shown in a table so admins don't have to select/copy manually.
+export function CopyableWallet({ wallet, lead = 6, trail = 4 }: { wallet: string | null | undefined; lead?: number; trail?: number }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!wallet) return <span className="text-ink-faint">—</span>;
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(wallet as string);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard unavailable (permissions/insecure context) — no-op
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : 'Copy address'}
+      className="group inline-flex items-center gap-1.5"
+    >
+      <Mono>{truncateWallet(wallet, lead, trail)}</Mono>
+      {copied ? (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0 text-green" aria-hidden="true">
+          <path d="m5 13 4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ) : (
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="shrink-0 text-ink-faint opacity-0 transition-opacity group-hover:opacity-100"
+          aria-hidden="true"
+        >
+          <rect x="9" y="9" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+// Text input for an admin-entered image URL with a live thumbnail preview —
+// shared by any CMS form that stores an image as a plain URL string (banner
+// images, team photos, media library items).
+export function ImageUrlField({
+  label,
+  value,
+  onChange,
+  required,
+  placeholder = 'https://…',
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (v: string) => void;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  const [broken, setBroken] = useState(false);
+  const looksLikeUrl = !!value && /^https?:\/\//.test(value);
+
+  return (
+    <div>
+      <Label>{label}</Label>
+      <Input
+        value={value ?? ''}
+        onChange={(e) => {
+          setBroken(false);
+          onChange(e.target.value);
+        }}
+        placeholder={placeholder}
+        required={required}
+      />
+      {looksLikeUrl && !broken && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={value}
+          alt=""
+          className="mt-2 h-16 w-auto rounded border border-border object-cover"
+          onError={() => setBroken(true)}
+        />
+      )}
+      {looksLikeUrl && broken && <p className="mt-1.5 text-xs text-red">Invalid URL — image failed to load.</p>}
     </div>
   );
 }

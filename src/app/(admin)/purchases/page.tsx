@@ -10,6 +10,7 @@ import {
   Badge,
   Button,
   Card,
+  CopyableWallet,
   EmptyState,
   ErrorNote,
   Input,
@@ -239,7 +240,7 @@ export default function PurchasesPage() {
                   <tr key={p.id} className={p.status === 'needs_pricing' ? 'bg-yellow-dim' : undefined}>
                     <td className={`${td} text-ink-dim`}>{formatDateGmt4(p.created_at)}</td>
                     <td className={td}>
-                      <Mono>{truncateWallet(p.buyer_wallet)}</Mono>
+                      <CopyableWallet wallet={p.buyer_wallet} />
                     </td>
                     <td className={`${td} text-ink-dim`}>{p.chain}</td>
                     <td className={`${td} text-ink-dim`}>{p.crypto_currency}</td>

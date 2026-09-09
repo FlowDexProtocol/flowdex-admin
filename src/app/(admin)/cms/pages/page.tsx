@@ -7,7 +7,10 @@ import { useFetch } from '@/lib/hooks';
 import { getCmsPageContent, getCmsPages, setCmsPageField } from '@/lib/api';
 import { Button, Card, EmptyState, ErrorNote, Input, Label, LoadingBlock, PageHeader, Select, Textarea } from '@/components/ui';
 
-const FALLBACK_PAGES = ['home', 'tokenomics', 'roadmap'];
+// Every page key actually read via fetchPageContent() across the landing
+// and purchase-page sites — kept in sync manually since this is only a
+// fallback for when GET /admin/cms/pages is unreachable or returns empty.
+const FALLBACK_PAGES = ['home', 'global', 'nav', 'tokenomics', 'roadmap', 'terms', 'privacy', 'legal', 'buy'];
 const LONG_VALUE_THRESHOLD = 100;
 
 function fieldEditor(value: string, draft: string, setDraft: (v: string) => void) {

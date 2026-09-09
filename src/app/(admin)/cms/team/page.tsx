@@ -6,7 +6,7 @@ import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
 import { createCmsTeamMember, deleteCmsTeamMember, getCmsTeam, reorderCmsTeam, updateCmsTeamMember } from '@/lib/api';
 import type { CmsTeamMember, CmsTeamPayload } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorNote, IconButton, Input, Label, LoadingBlock, Modal, PageHeader, Textarea, Toggle } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, IconButton, ImageUrlField, Input, Label, LoadingBlock, Modal, PageHeader, Textarea, Toggle } from '@/components/ui';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const EMPTY_FORM: CmsTeamPayload = { name: '', role: '', bio: '', photo_url: '', linkedin_url: '', is_active: true };
@@ -195,10 +195,7 @@ export default function TeamPage() {
             <Label>Bio</Label>
             <Textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
           </div>
-          <div>
-            <Label>Photo URL</Label>
-            <Input value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} />
-          </div>
+          <ImageUrlField label="Photo URL" value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} />
           <div>
             <Label>LinkedIn URL</Label>
             <Input value={form.linkedin_url} onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })} />

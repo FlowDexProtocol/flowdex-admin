@@ -5,11 +5,12 @@ import { useAdminAuth } from '@/context/admin-auth-context';
 import { useDebouncedValue, useFetch } from '@/lib/hooks';
 import { exportBuyersCsv, getBuyerDetail, getBuyers, getPurchases } from '@/lib/api';
 import { BUYER_TAGS } from '@/lib/types';
-import { formatDate, formatTokens, formatUsd, truncateWallet } from '@/lib/format';
+import { formatDate, formatTokens, formatUsd } from '@/lib/format';
 import {
   Badge,
   Button,
   Card,
+  CopyableWallet,
   EmptyState,
   ErrorNote,
   Input,
@@ -101,7 +102,7 @@ function BuyerExpandedPanel({ wallet }: { wallet: string }) {
           <div className="max-h-56 space-y-2 overflow-y-auto pr-1 text-xs">
             {data.referrals.map((r) => (
               <div key={r.id} className="flex items-center justify-between">
-                <Mono className="text-ink-dim">{truncateWallet(r.referred_wallet)}</Mono>
+                <CopyableWallet wallet={r.referred_wallet} />
                 <Badge tone={r.has_purchased ? 'green' : 'neutral'}>{r.has_purchased ? 'Converted' : 'Pending'}</Badge>
               </div>
             ))}
@@ -244,7 +245,7 @@ export default function BuyersPage() {
                       className="cursor-pointer hover:bg-white/5"
                     >
                       <td className={td}>
-                        <Mono>{truncateWallet(b.buyer_wallet)}</Mono>
+                        <CopyableWallet wallet={b.buyer_wallet} />
                       </td>
                       <td className={td}>{tagInfo ? <Badge tone={tagInfo.tone}>{tagInfo.label}</Badge> : <span className="text-ink-faint">—</span>}</td>
                       <td className={td}>
@@ -253,7 +254,9 @@ export default function BuyersPage() {
                       <td className={td}>
                         <Mono>{formatTokens(b.total_tokens)}</Mono>
                       </td>
-                      <td className={`${td} text-ink-dim`}>{b.total_purchases}</td>
+                      <td className={td}>
+                        <Mono className="text-ink-dim">{b.total_purchases}</Mono>
+                      </td>
                       <td className={`${td} text-ink-dim`}>{tiers.length ? tiers.join(', ') : '—'}</td>
                       <td className={`${td} text-ink-dim`}>{b.country || '—'}</td>
                       <td className={`${td} text-ink-dim`}>{formatDate(b.created_at)}</td>

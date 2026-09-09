@@ -6,7 +6,7 @@ import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
 import { createCmsMedia, deleteCmsMedia, getCmsMedia } from '@/lib/api';
 import type { CmsMedia, CmsMediaPayload } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorNote, IconButton, Input, Label, LoadingBlock, Modal, PageHeader, Select } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorNote, IconButton, ImageUrlField, Input, Label, LoadingBlock, Modal, PageHeader, Select } from '@/components/ui';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const TYPES = ['logo', 'screenshot', 'graphic', 'icon'];
@@ -147,10 +147,7 @@ export default function MediaPage() {
               </Select>
             </div>
           </div>
-          <div>
-            <Label>URL</Label>
-            <Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://…" required />
-          </div>
+          <ImageUrlField label="URL" value={form.url} onChange={(v) => setForm({ ...form, url: v })} required />
           <div>
             <Label>Alt Text</Label>
             <Input value={form.alt_text} onChange={(e) => setForm({ ...form, alt_text: e.target.value })} />

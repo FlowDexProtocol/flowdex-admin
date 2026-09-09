@@ -12,6 +12,7 @@ import {
   EmptyState,
   ErrorNote,
   IconButton,
+  ImageUrlField,
   Input,
   Label,
   LoadingBlock,
@@ -85,33 +86,6 @@ function BannerPreview({ form }: { form: CmsBannerPayload }) {
           <p className="mt-2 font-mono text-xs text-white/90">Countdown: {new Date(form.countdown_end).toLocaleString()}</p>
         )}
       </div>
-    </div>
-  );
-}
-
-function ImageField({ label, value, onChange }: { label: string; value: string | undefined; onChange: (v: string) => void }) {
-  const [broken, setBroken] = useState(false);
-  return (
-    <div>
-      <Label>{label}</Label>
-      <Input
-        value={value ?? ''}
-        onChange={(e) => {
-          setBroken(false);
-          onChange(e.target.value);
-        }}
-        placeholder="https://…"
-      />
-      {looksLikeUrl(value) && !broken && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt=""
-          className="mt-2 h-16 w-auto rounded border border-border object-cover"
-          onError={() => setBroken(true)}
-        />
-      )}
-      {looksLikeUrl(value) && broken && <p className="mt-1.5 text-xs text-red">Invalid URL — image failed to load.</p>}
     </div>
   );
 }
@@ -387,12 +361,12 @@ export default function BannersPage() {
             </div>
           </div>
 
-          <ImageField
+          <ImageUrlField
             label="Desktop Image URL"
             value={form.image_url_desktop}
             onChange={(v) => setForm({ ...form, image_url_desktop: v })}
           />
-          <ImageField
+          <ImageUrlField
             label="Mobile Image URL"
             value={form.image_url_mobile}
             onChange={(v) => setForm({ ...form, image_url_mobile: v })}
