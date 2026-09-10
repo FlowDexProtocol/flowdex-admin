@@ -58,6 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/cms/faqs', label: 'FAQs', roles: ['super_admin', 'editor'] },
       { href: '/cms/blog', label: 'Blog', roles: ['super_admin', 'editor'] },
       { href: '/cms/pages', label: 'Pages', roles: ['super_admin', 'editor'] },
+      { href: '/cms/editor', label: 'Page Editor', roles: ['super_admin', 'editor'] },
       { href: '/cms/team', label: 'Team', roles: ['super_admin', 'editor'] },
     ],
   },

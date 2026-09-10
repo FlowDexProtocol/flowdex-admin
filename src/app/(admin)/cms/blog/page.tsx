@@ -154,11 +154,11 @@ export default function BlogListPage() {
                     )}
                   </td>
                   <td className={td}>
-                    <p className="font-medium text-ink">{p.title}</p>
-                    <p className="font-mono text-xs text-ink-faint">{p.slug}</p>
+                    <p className="max-w-[280px] truncate font-medium text-ink">{p.title}</p>
+                    <p className="max-w-[280px] truncate font-mono text-xs text-ink-faint">{p.slug}</p>
                   </td>
-                  <td className={`${td} text-ink-dim`}>{p.category}</td>
-                  <td className={`${td} text-ink-dim`}>{p.author}</td>
+                  <td className={`${td} max-w-[140px] truncate text-ink-dim`}>{p.category}</td>
+                  <td className={`${td} max-w-[140px] truncate text-ink-dim`}>{p.author}</td>
                   <td className={`${td} text-ink-dim`}>{words.toLocaleString()} words</td>
                   <td className={td}>
                     <Badge tone={p.is_published ? 'green' : 'neutral'}>{p.is_published ? 'Published' : 'Draft'}</Badge>

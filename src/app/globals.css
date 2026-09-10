@@ -112,6 +112,13 @@ table tbody tr:hover {
 .ql-editor {
   color: var(--color-ink);
   min-height: 400px;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+.ql-container.ql-snow,
+.ql-toolbar.ql-snow {
+  max-width: 100%;
 }
 .ql-editor.ql-blank::before {
   color: var(--color-ink-faint);
