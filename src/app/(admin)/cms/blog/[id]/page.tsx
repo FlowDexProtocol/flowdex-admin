@@ -25,12 +25,11 @@ export default function EditBlogPostPage({ params }: { params: Promise<{ id: str
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
 
+  // Title/content presence is already validated inside BlogEditorForm
+  // (which knows how to check "empty" HTML, e.g. Quill's <p><br></p>)
+  // before this is ever called.
   async function handleSubmit(values: BlogFormValues) {
     if (!post) return;
-    if (!values.title.trim() || !values.content.trim()) {
-      setError('Title and content are required.');
-      return;
-    }
     setSubmitting(true);
     setError(null);
     try {

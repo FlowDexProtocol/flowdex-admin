@@ -18,6 +18,7 @@ import {
   Pagination,
   StatCard,
   TableShell,
+  TableSkeleton,
   td,
   th,
 } from '@/components/ui';
@@ -188,7 +189,7 @@ export default function ReferralsPage() {
             </div>
 
             {tableLoading && !tableRows ? (
-              <LoadingBlock />
+              <TableSkeleton cols={7} />
             ) : tableError && !tableRows ? (
               <ErrorNote>{tableError}</ErrorNote>
             ) : !tableRows || tableRows.length === 0 ? (

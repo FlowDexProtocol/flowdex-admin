@@ -63,6 +63,14 @@ import type {
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://api.flowdexprotocol.com').replace(/\/$/, '');
 
+// POST /admin/upload returns a path relative to the API origin (e.g.
+// "/uploads/foo.png"); every <img> tag needs the full URL. Anything already
+// absolute (an external CMS media URL, an empty string) passes through.
+export function resolveAssetUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : `${API_BASE}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;
@@ -359,6 +367,55 @@ export const publishCmsBlogPost = (token: string, id: number) =>
   request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}/publish`, { method: 'POST', token });
 export const unpublishCmsBlogPost = (token: string, id: number) =>
   request<{ success: boolean; post: CmsBlogPost }>(`/admin/cms/blog/${id}/unpublish`, { method: 'POST', token });
+
+export const getBlogCategories = (token: string) => request<string[]>('/admin/cms/blog/categories', { token });
+export const createBlogCategory = (token: string, name: string) =>
+  request<{ success: boolean; categories: string[] }>('/admin/cms/blog/categories', { method: 'POST', body: { name }, token });
+
+// ── File upload ──
+// Multipart, so it bypasses the JSON request() helper entirely — the browser
+// sets its own Content-Type (with the multipart boundary) when the body is
+// a FormData instance; setting it manually breaks the boundary.
+export interface UploadResponse {
+  success: boolean;
+  url: string;
+  filename: string;
+}
+// XMLHttpRequest instead of fetch() — fetch has no cross-browser-reliable
+// way to observe upload (not download) progress; XHR's `upload.onprogress`
+// does, which is what lets ImageUploader show a real percentage.
+export function uploadFile(token: string, file: File, onProgress?: (pct: number) => void): Promise<UploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/admin/upload`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+
+    xhr.onload = () => {
+      let data: unknown = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data as UploadResponse);
+      } else {
+        const payload = (data ?? {}) as { error?: string };
+        reject(new ApiError(payload.error || `Upload failed (${xhr.status})`, xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError('Network error — could not reach the FlowDex API.', 0));
+
+    xhr.send(formData);
+  });
+}
 
 // ── CMS: Page Content ──
 export const getCmsPages = (token: string) => request<string[]>('/admin/cms/pages', { token });

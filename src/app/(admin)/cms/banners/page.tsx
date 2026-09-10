@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
@@ -11,19 +12,22 @@ import {
   Button,
   EmptyState,
   ErrorNote,
+  FieldError,
   IconButton,
-  ImageUrlField,
   Input,
   Label,
-  LoadingBlock,
   Modal,
   PageHeader,
   Select,
   TableShell,
+  TableSkeleton,
   Toggle,
   td,
+  tdActions,
   th,
+  thActions,
 } from '@/components/ui';
+import ImageUploader from '@/components/ImageUploader';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const BG_STYLES = ['gradient', 'gradient-purple', 'gradient-cyan'];
@@ -62,29 +66,41 @@ function looksLikeUrl(value: string | undefined): boolean {
   return !!value && /^https?:\/\//.test(value);
 }
 
-function BannerPreview({ form }: { form: CmsBannerPayload }) {
-  const bgImage = looksLikeUrl(form.image_url_desktop) ? form.image_url_desktop : undefined;
+// Actual device aspect ratios (1440x400 desktop, 375x200 mobile) scaled
+// down to fit the modal — real proportions matter more than real pixels
+// for judging "does this crop badly on mobile".
+function BannerDevicePreview({
+  label,
+  aspectClass,
+  form,
+  imageUrl,
+}: {
+  label: string;
+  aspectClass: string;
+  form: CmsBannerPayload;
+  imageUrl: string | undefined;
+}) {
+  const bgImage = looksLikeUrl(imageUrl) ? imageUrl : undefined;
   return (
-    <div
-      className="relative overflow-hidden rounded-xl border border-border p-5"
-      style={{
-        background: bgImage ? `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${bgImage}) center/cover` : form.bg_color || undefined,
-      }}
-    >
-      {!bgImage && !form.bg_color && (
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple/20" />
-      )}
-      <div className="relative">
-        <p className="text-sm font-bold text-white">{form.title || 'Banner title'}</p>
-        {form.subtitle && <p className="mt-1 text-xs text-white/80">{form.subtitle}</p>}
-        {form.cta_text && (
-          <span className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#03131a]">
-            {form.cta_text}
-          </span>
-        )}
-        {form.show_countdown && form.countdown_end && (
-          <p className="mt-2 font-mono text-xs text-white/90">Countdown: {new Date(form.countdown_end).toLocaleString()}</p>
-        )}
+    <div>
+      <p className="mb-1.5 text-xs font-semibold uppercase tracking-widest text-ink-dim">{label}</p>
+      <div
+        className={`relative overflow-hidden rounded-xl border border-border p-4 ${aspectClass}`}
+        style={{
+          background: bgImage ? `linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.45)), url(${bgImage}) center/cover` : form.bg_color || undefined,
+        }}
+      >
+        {!bgImage && !form.bg_color && <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-purple/20" />}
+        <div className="relative">
+          <p className="text-sm font-bold text-white">{form.title || 'Banner title'}</p>
+          {form.subtitle && <p className="mt-1 text-xs text-white/80">{form.subtitle}</p>}
+          {form.cta_text && (
+            <span className="mt-3 inline-block rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-[#03131a]">{form.cta_text}</span>
+          )}
+          {form.show_countdown && form.countdown_end && (
+            <p className="mt-2 font-mono text-[10px] text-white/90">Countdown: {new Date(form.countdown_end).toLocaleString()}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -126,6 +142,8 @@ function useCountdownPreview(iso: string | undefined): string | null {
 export default function BannersPage() {
   const { adminFetch } = useAdminAuth();
   const { showToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: banners, loading, error, reload } = useFetch(() => adminFetch((t) => getCmsBanners(t)), []);
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -133,6 +151,7 @@ export default function BannersPage() {
   const [form, setForm] = useState<CmsBannerPayload>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CmsBanner | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -142,8 +161,19 @@ export default function BannersPage() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setTitleError(null);
     setModalOpen(true);
   }
+
+  // Dashboard's "+ Add Banner" quick action links here with ?new=1 —
+  // strip the param immediately after so a refresh doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      openCreate();
+      router.replace('/cms/banners');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   function openClone(banner: CmsBanner) {
     setEditing(null);
@@ -161,6 +191,7 @@ export default function BannersPage() {
       is_active: false,
     });
     setFormError(null);
+    setTitleError(null);
     setModalOpen(true);
   }
 
@@ -180,15 +211,17 @@ export default function BannersPage() {
       is_active: banner.is_active,
     });
     setFormError(null);
+    setTitleError(null);
     setModalOpen(true);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.title.trim()) {
-      setFormError('Title is required.');
+      setTitleError('Title is required.');
       return;
     }
+    setTitleError(null);
     setSaving(true);
     setFormError(null);
     try {
@@ -251,11 +284,16 @@ export default function BannersPage() {
       <PageHeader title="Banners" description="Landing page carousel slides." action={<Button onClick={openCreate}>Add Banner</Button>} />
 
       {loading && !banners ? (
-        <LoadingBlock />
+        <TableSkeleton cols={9} />
       ) : error && !banners ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !banners || banners.length === 0 ? (
-        <EmptyState>No banners yet — create one to get started.</EmptyState>
+        <EmptyState>
+          <p>No banners yet — create one to get started.</p>
+          <Button className="mt-4" onClick={openCreate}>
+            Add Banner
+          </Button>
+        </EmptyState>
       ) : (
         <TableShell>
           <thead>
@@ -268,12 +306,12 @@ export default function BannersPage() {
               <th className={th}>Media</th>
               <th className={th}>Sort</th>
               <th className={th}>Active</th>
-              <th className={th}></th>
+              <th className={thActions}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {banners.map((b, i) => (
-              <tr key={b.id}>
+              <tr key={b.id} onClick={() => openEdit(b)} className="cursor-pointer">
                 <td className={`${td} text-ink-faint`}>{b.id}</td>
                 <td className={`${td} font-medium text-ink`}>{b.title}</td>
                 <td className={`${td} max-w-[200px] truncate text-ink-dim`}>{b.subtitle || '—'}</td>
@@ -288,7 +326,7 @@ export default function BannersPage() {
                     )}
                   </div>
                 </td>
-                <td className={td}>
+                <td className={td} onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     <IconButton title="Move up" onClick={() => move(i, -1)}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -305,7 +343,7 @@ export default function BannersPage() {
                 <td className={td}>
                   <Badge tone={b.is_active ? 'green' : 'neutral'}>{b.is_active ? 'Active' : 'Inactive'}</Badge>
                 </td>
-                <td className={td}>
+                <td className={tdActions} onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1.5">
                     <IconButton title="Edit" onClick={() => openEdit(b)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -338,13 +376,17 @@ export default function BannersPage() {
       )}
       {reordering && <p className="mt-2 text-xs text-ink-faint">Saving order…</p>}
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Banner' : 'Add Banner'}>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit Banner' : 'Add Banner'} size="lg">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <BannerPreview form={form} />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <BannerDevicePreview label="Desktop Preview (1440×400)" aspectClass="aspect-[1440/400]" form={form} imageUrl={form.image_url_desktop} />
+            <BannerDevicePreview label="Mobile Preview (375×200)" aspectClass="aspect-[375/200]" form={form} imageUrl={form.image_url_mobile} />
+          </div>
 
           <div>
-            <Label>Title</Label>
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+            <Label required>Title</Label>
+            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+            {titleError && <FieldError>{titleError}</FieldError>}
           </div>
           <div>
             <Label>Subtitle</Label>
@@ -361,16 +403,8 @@ export default function BannersPage() {
             </div>
           </div>
 
-          <ImageUrlField
-            label="Desktop Image URL"
-            value={form.image_url_desktop}
-            onChange={(v) => setForm({ ...form, image_url_desktop: v })}
-          />
-          <ImageUrlField
-            label="Mobile Image URL"
-            value={form.image_url_mobile}
-            onChange={(v) => setForm({ ...form, image_url_mobile: v })}
-          />
+          <ImageUploader label="Desktop Image" value={form.image_url_desktop} onChange={(v) => setForm({ ...form, image_url_desktop: v })} />
+          <ImageUploader label="Mobile Image" value={form.image_url_mobile} onChange={(v) => setForm({ ...form, image_url_mobile: v })} />
 
           <div>
             <Label>Countdown Ends</Label>

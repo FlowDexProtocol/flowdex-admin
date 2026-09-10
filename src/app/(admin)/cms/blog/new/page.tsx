@@ -7,12 +7,14 @@ import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
 import { createCmsBlogPost } from '@/lib/api';
 import { PageHeader } from '@/components/ui';
-import BlogEditorForm, { BLOG_CATEGORIES, type BlogFormValues } from '@/components/BlogEditorForm';
+import BlogEditorForm, { type BlogFormValues } from '@/components/BlogEditorForm';
 
 const EMPTY: BlogFormValues = {
   title: '',
   slug: '',
-  category: BLOG_CATEGORIES[0],
+  // CategorySelect fetches the real list on mount and corrects this to the
+  // first actual category if "updates" isn't among them.
+  category: 'updates',
   author: 'FlowDex Team',
   cover_image_url: '',
   excerpt: '',
@@ -26,11 +28,10 @@ export default function NewBlogPostPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Title/content presence is already validated inside BlogEditorForm
+  // (which knows how to check "empty" HTML, e.g. Quill's <p><br></p>)
+  // before this is ever called.
   async function handleSubmit(values: BlogFormValues) {
-    if (!values.title.trim() || !values.content.trim()) {
-      setError('Title and content are required.');
-      return;
-    }
     setSubmitting(true);
     setError(null);
     try {

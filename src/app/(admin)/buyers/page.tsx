@@ -14,7 +14,7 @@ import {
   EmptyState,
   ErrorNote,
   Input,
-  LoadingBlock,
+  TableSkeleton,
   Mono,
   PageHeader,
   Pagination,
@@ -212,7 +212,7 @@ export default function BuyersPage() {
       </div>
 
       {loading && !buyers ? (
-        <LoadingBlock />
+        <TableSkeleton cols={9} />
       ) : error && !buyers ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !buyers || buyers.length === 0 ? (

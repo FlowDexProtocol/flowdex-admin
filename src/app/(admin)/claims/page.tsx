@@ -13,7 +13,7 @@ import {
   EmptyState,
   ErrorNote,
   Label,
-  LoadingBlock,
+  TableSkeleton,
   Mono,
   PageHeader,
   Pagination,
@@ -126,7 +126,7 @@ export default function ClaimsPage() {
       </Card>
 
       {loading && !claims ? (
-        <LoadingBlock />
+        <TableSkeleton cols={7} />
       ) : error && !claims ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !claims || claims.length === 0 ? (

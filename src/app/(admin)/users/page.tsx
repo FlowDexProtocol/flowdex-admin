@@ -20,13 +20,15 @@ import {
   ErrorNote,
   Input,
   Label,
-  LoadingBlock,
   Modal,
   PageHeader,
   Select,
   TableShell,
+  TableSkeleton,
   td,
+  tdActions,
   th,
+  thActions,
 } from '@/components/ui';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { formatDate } from '@/lib/format';
@@ -398,7 +400,7 @@ export default function UsersPage() {
       />
 
       {loading && !users ? (
-        <LoadingBlock />
+        <TableSkeleton cols={6} />
       ) : error && !Array.isArray(users) ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !Array.isArray(users) ? (
@@ -406,7 +408,12 @@ export default function UsersPage() {
         // whole page with "users.map is not a function" — fail gracefully.
         <ErrorNote>Couldn&rsquo;t load admin users — unexpected response from the server.</ErrorNote>
       ) : users.length === 0 ? (
-        <EmptyState>No admin users yet.</EmptyState>
+        <EmptyState>
+          <p>No admin users yet.</p>
+          <Button className="mt-4" onClick={() => setAddOpen(true)}>
+            Add User
+          </Button>
+        </EmptyState>
       ) : (
         <TableShell>
           <thead>
@@ -416,7 +423,7 @@ export default function UsersPage() {
               <th className={th}>Role</th>
               <th className={th}>Status</th>
               <th className={th}>Last Login</th>
-              <th className={th}></th>
+              <th className={thActions}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -433,7 +440,7 @@ export default function UsersPage() {
                     <Badge tone={u.is_active ? 'green' : 'neutral'}>{u.is_active ? 'Active' : 'Inactive'}</Badge>
                   </td>
                   <td className={`${td} text-ink-faint`}>{u.last_login ? formatDate(u.last_login) : 'Never'}</td>
-                  <td className={td}>
+                  <td className={tdActions}>
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Button
                         variant="secondary"

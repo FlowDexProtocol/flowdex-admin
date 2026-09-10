@@ -1,43 +1,78 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import type { AdminRole } from '@/lib/types';
 
+interface NavItem {
+  href: string;
+  label: string;
+  roles: AdminRole[];
+}
+
+interface NavGroup {
+  // null label = ungrouped, always-visible top item (Dashboard).
+  label: string | null;
+  items: NavItem[];
+}
+
 // roles: who can SEE this item. Matches the backend's actual access rules
 // (super_admin-only: OTC/Overrides/Reconciliation/Supply/Reports/Users;
 // editor+super_admin: everything else incl. Purchases/Buyers with backend-
-// redacted fields; viewer: Dashboard + Settings only).
-const NAV_ITEMS: { href: string; label: string; roles: AdminRole[] }[] = [
-  { href: '/', label: 'Dashboard', roles: ['super_admin', 'editor', 'viewer'] },
-  { href: '/purchases', label: 'Purchases', roles: ['super_admin', 'editor'] },
-  { href: '/buyers', label: 'Buyers', roles: ['super_admin', 'editor'] },
-  { href: '/referrals', label: 'Referrals', roles: ['super_admin', 'editor'] },
-  { href: '/claims', label: 'Claims', roles: ['super_admin', 'editor'] },
-  { href: '/otc', label: 'OTC', roles: ['super_admin'] },
-  { href: '/overrides', label: 'Overrides', roles: ['super_admin'] },
-  { href: '/reconciliation', label: 'Reconciliation', roles: ['super_admin'] },
-  { href: '/supply', label: 'Supply', roles: ['super_admin'] },
-  { href: '/reports', label: 'Reports', roles: ['super_admin'] },
-  { href: '/geo', label: 'Geo', roles: ['super_admin', 'editor'] },
-  { href: '/audit-log', label: 'Audit Log', roles: ['super_admin', 'editor'] },
-  { href: '/users', label: 'Users', roles: ['super_admin'] },
-  { href: '/settings', label: 'Settings', roles: ['super_admin', 'editor', 'viewer'] },
-];
-
-const CONTENT_NAV_ITEMS: { href: string; label: string; roles: AdminRole[] }[] = [
-  { href: '/cms/banners', label: 'Banners', roles: ['super_admin', 'editor'] },
-  { href: '/cms/faqs', label: 'FAQs', roles: ['super_admin', 'editor'] },
-  { href: '/cms/blog', label: 'Blog', roles: ['super_admin', 'editor'] },
-  { href: '/cms/pages', label: 'Pages', roles: ['super_admin', 'editor'] },
-  { href: '/cms/media', label: 'Media', roles: ['super_admin', 'editor'] },
-  { href: '/cms/team', label: 'Team', roles: ['super_admin', 'editor'] },
+// redacted fields; viewer: Dashboard + Settings only). Grouped by how an
+// admin actually thinks about their day, not by when the page was built.
+const NAV_GROUPS: NavGroup[] = [
+  { label: null, items: [{ href: '/', label: 'Dashboard', roles: ['super_admin', 'editor', 'viewer'] }] },
+  {
+    label: 'Presale',
+    items: [
+      { href: '/purchases', label: 'Purchases', roles: ['super_admin', 'editor'] },
+      { href: '/buyers', label: 'Buyers', roles: ['super_admin', 'editor'] },
+      { href: '/referrals', label: 'Referrals', roles: ['super_admin', 'editor'] },
+      { href: '/claims', label: 'Claims', roles: ['super_admin', 'editor'] },
+    ],
+  },
+  {
+    label: 'Management',
+    items: [
+      { href: '/otc', label: 'OTC', roles: ['super_admin'] },
+      { href: '/overrides', label: 'Overrides', roles: ['super_admin'] },
+      { href: '/supply', label: 'Supply', roles: ['super_admin'] },
+      { href: '/reconciliation', label: 'Reconciliation', roles: ['super_admin'] },
+    ],
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { href: '/reports', label: 'Reports', roles: ['super_admin'] },
+      { href: '/geo', label: 'Geo', roles: ['super_admin', 'editor'] },
+      { href: '/audit-log', label: 'Audit Log', roles: ['super_admin', 'editor'] },
+    ],
+  },
+  {
+    label: 'Content',
+    items: [
+      { href: '/cms/banners', label: 'Banners', roles: ['super_admin', 'editor'] },
+      { href: '/cms/faqs', label: 'FAQs', roles: ['super_admin', 'editor'] },
+      { href: '/cms/blog', label: 'Blog', roles: ['super_admin', 'editor'] },
+      { href: '/cms/pages', label: 'Pages', roles: ['super_admin', 'editor'] },
+      { href: '/cms/team', label: 'Team', roles: ['super_admin', 'editor'] },
+    ],
+  },
+  {
+    label: 'Settings',
+    items: [
+      { href: '/users', label: 'Users', roles: ['super_admin'] },
+      { href: '/settings', label: 'Settings', roles: ['super_admin', 'editor', 'viewer'] },
+    ],
+  },
 ];
 
 export function isPathAllowed(pathname: string, role: AdminRole | null): boolean {
   if (!role) return false;
-  const allItems = [...NAV_ITEMS, ...CONTENT_NAV_ITEMS];
+  const allItems = NAV_GROUPS.flatMap((g) => g.items);
   const match = allItems.find((item) => (item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)));
   // Unknown/dynamic routes (e.g. /cms/blog/[id], /cms/blog/new) fall back to
   // matching their nearest listed ancestor via startsWith above; if nothing
@@ -47,13 +82,34 @@ export function isPathAllowed(pathname: string, role: AdminRole | null): boolean
   return match.roles.includes(role);
 }
 
-function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: AdminRole | null }) {
-  const pathname = usePathname();
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>
+      <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-  const renderItems = (items: typeof NAV_ITEMS) =>
-    items
-      .filter((item) => !role || item.roles.includes(role))
-      .map((item) => {
+function NavGroupSection({
+  group,
+  role,
+  pathname,
+  onNavigate,
+  collapsible,
+}: {
+  group: NavGroup;
+  role: AdminRole | null;
+  pathname: string;
+  onNavigate?: () => void;
+  collapsible: boolean;
+}) {
+  const [open, setOpen] = useState(true);
+  const visibleItems = group.items.filter((item) => !role || item.roles.includes(role));
+  if (visibleItems.length === 0) return null;
+
+  const links = (
+    <div className="flex flex-col gap-0.5">
+      {visibleItems.map((item) => {
         const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
         return (
           <Link
@@ -67,19 +123,39 @@ function NavLinks({ onNavigate, role }: { onNavigate?: () => void; role: AdminRo
             {item.label}
           </Link>
         );
-      });
+      })}
+    </div>
+  );
 
-  const visibleContentItems = CONTENT_NAV_ITEMS.filter((item) => !role || item.roles.includes(role));
+  if (!group.label) return links;
+
+  return (
+    <div>
+      {collapsible ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mb-1 mt-4 flex min-h-8 w-full items-center justify-between px-3 text-xs font-semibold uppercase tracking-widest text-ink-faint"
+        >
+          {group.label}
+          <ChevronIcon open={open} />
+        </button>
+      ) : (
+        <div className="mb-1 mt-4 px-3 text-xs font-semibold uppercase tracking-widest text-ink-faint">{group.label}</div>
+      )}
+      {(!collapsible || open) && links}
+    </div>
+  );
+}
+
+function NavLinks({ onNavigate, role, collapsible = false }: { onNavigate?: () => void; role: AdminRole | null; collapsible?: boolean }) {
+  const pathname = usePathname();
 
   return (
     <nav className="flex flex-col gap-0.5">
-      {renderItems(NAV_ITEMS)}
-      {visibleContentItems.length > 0 && (
-        <>
-          <div className="mb-1 mt-4 px-3 text-xs font-semibold uppercase tracking-widest text-ink-faint">Content</div>
-          {renderItems(CONTENT_NAV_ITEMS)}
-        </>
-      )}
+      {NAV_GROUPS.map((group, i) => (
+        <NavGroupSection key={group.label ?? i} group={group} role={role} pathname={pathname} onNavigate={onNavigate} collapsible={collapsible} />
+      ))}
     </nav>
   );
 }
@@ -145,7 +221,7 @@ export default function Sidebar({ mobileOpen, onCloseMobile }: { mobileOpen: boo
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <NavLinks onNavigate={onCloseMobile} role={role} />
+              <NavLinks onNavigate={onCloseMobile} role={role} collapsible />
             </div>
             <div className="mt-4 border-t border-border pt-4">
               <p className="truncate px-3 text-xs text-ink-faint">Signed in as {username}</p>

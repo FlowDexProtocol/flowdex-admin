@@ -11,17 +11,20 @@ import {
   Button,
   EmptyState,
   ErrorNote,
+  FieldError,
   IconButton,
   Label,
-  LoadingBlock,
   Modal,
   PageHeader,
   Select,
   TableShell,
+  TableSkeleton,
   Textarea,
   Toggle,
   td,
+  tdActions,
   th,
+  thActions,
 } from '@/components/ui';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
@@ -43,6 +46,7 @@ export default function FaqsPage() {
   const [form, setForm] = useState<CmsFaqPayload>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ question?: string; answer?: string }>({});
   const [deleteTarget, setDeleteTarget] = useState<CmsFaq | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -51,6 +55,7 @@ export default function FaqsPage() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setFieldErrors({});
     setModalOpen(true);
   }
 
@@ -58,15 +63,17 @@ export default function FaqsPage() {
     setEditing(faq);
     setForm({ question: faq.question, answer: faq.answer, category: faq.category, is_active: faq.is_active });
     setFormError(null);
+    setFieldErrors({});
     setModalOpen(true);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.question.trim() || !form.answer.trim()) {
-      setFormError('Question and answer are required.');
-      return;
-    }
+    const errors: typeof fieldErrors = {};
+    if (!form.question.trim()) errors.question = 'Question is required.';
+    if (!form.answer.trim()) errors.answer = 'Answer is required.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSaving(true);
     setFormError(null);
     try {
@@ -129,11 +136,16 @@ export default function FaqsPage() {
       <PageHeader title="FAQs" description="Frequently asked questions shown across the site." action={<Button onClick={openCreate}>Add FAQ</Button>} />
 
       {loading && !faqs ? (
-        <LoadingBlock />
+        <TableSkeleton cols={6} />
       ) : error && !faqs ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !faqs || faqs.length === 0 ? (
-        <EmptyState>No FAQs yet — create one to get started.</EmptyState>
+        <EmptyState>
+          <p>No FAQs yet — create one to get started.</p>
+          <Button className="mt-4" onClick={openCreate}>
+            Add FAQ
+          </Button>
+        </EmptyState>
       ) : (
         <TableShell>
           <thead>
@@ -143,18 +155,18 @@ export default function FaqsPage() {
               <th className={th}>Category</th>
               <th className={th}>Sort</th>
               <th className={th}>Active</th>
-              <th className={th}></th>
+              <th className={thActions}></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {faqs.map((f, i) => (
-              <tr key={f.id}>
+              <tr key={f.id} onClick={() => openEdit(f)} className="cursor-pointer">
                 <td className={`${td} text-ink-faint`}>{f.id}</td>
                 <td className={`${td} font-medium text-ink`}>{truncate(f.question)}</td>
                 <td className={td}>
                   <Badge tone="neutral">{f.category}</Badge>
                 </td>
-                <td className={td}>
+                <td className={td} onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     <IconButton title="Move up" onClick={() => move(i, -1)}>
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -171,7 +183,7 @@ export default function FaqsPage() {
                 <td className={td}>
                   <Badge tone={f.is_active ? 'green' : 'neutral'}>{f.is_active ? 'Active' : 'Inactive'}</Badge>
                 </td>
-                <td className={td}>
+                <td className={tdActions} onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1.5">
                     <IconButton title="Edit" onClick={() => openEdit(f)}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -201,12 +213,14 @@ export default function FaqsPage() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit FAQ' : 'Add FAQ'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Question</Label>
-            <Textarea rows={2} value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} required />
+            <Label required>Question</Label>
+            <Textarea rows={2} value={form.question} onChange={(e) => setForm({ ...form, question: e.target.value })} />
+            {fieldErrors.question && <FieldError>{fieldErrors.question}</FieldError>}
           </div>
           <div>
-            <Label>Answer</Label>
-            <Textarea rows={4} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} required />
+            <Label required>Answer</Label>
+            <Textarea rows={4} value={form.answer} onChange={(e) => setForm({ ...form, answer: e.target.value })} />
+            {fieldErrors.answer && <FieldError>{fieldErrors.answer}</FieldError>}
           </div>
           <div>
             <Label>Category</Label>

@@ -6,7 +6,8 @@ import { useToast } from '@/context/toast-context';
 import { useFetch } from '@/lib/hooks';
 import { createCmsTeamMember, deleteCmsTeamMember, getCmsTeam, reorderCmsTeam, updateCmsTeamMember } from '@/lib/api';
 import type { CmsTeamMember, CmsTeamPayload } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorNote, IconButton, ImageUrlField, Input, Label, LoadingBlock, Modal, PageHeader, Textarea, Toggle } from '@/components/ui';
+import { Badge, Button, CardGridSkeleton, Card, EmptyState, ErrorNote, FieldError, IconButton, Input, Label, Modal, PageHeader, Textarea, Toggle } from '@/components/ui';
+import ImageUploader from '@/components/ImageUploader';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const EMPTY_FORM: CmsTeamPayload = { name: '', role: '', bio: '', photo_url: '', linkedin_url: '', is_active: true };
@@ -21,6 +22,7 @@ export default function TeamPage() {
   const [form, setForm] = useState<CmsTeamPayload>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; role?: string }>({});
   const [deleteTarget, setDeleteTarget] = useState<CmsTeamMember | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reordering, setReordering] = useState(false);
@@ -29,6 +31,7 @@ export default function TeamPage() {
     setEditing(null);
     setForm(EMPTY_FORM);
     setFormError(null);
+    setFieldErrors({});
     setModalOpen(true);
   }
 
@@ -43,15 +46,17 @@ export default function TeamPage() {
       is_active: member.is_active,
     });
     setFormError(null);
+    setFieldErrors({});
     setModalOpen(true);
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.role.trim()) {
-      setFormError('Name and role are required.');
-      return;
-    }
+    const errors: typeof fieldErrors = {};
+    if (!form.name.trim()) errors.name = 'Name is required.';
+    if (!form.role.trim()) errors.role = 'Role is required.';
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
     setSaving(true);
     setFormError(null);
     try {
@@ -114,15 +119,20 @@ export default function TeamPage() {
       <PageHeader title="Team" description="Team members shown on the site." action={<Button onClick={openCreate}>Add Member</Button>} />
 
       {loading && !team ? (
-        <LoadingBlock />
+        <CardGridSkeleton />
       ) : error && !team ? (
         <ErrorNote>{error}</ErrorNote>
       ) : !team || team.length === 0 ? (
-        <EmptyState>No team members yet — add one to get started.</EmptyState>
+        <EmptyState>
+          <p>No team members yet — add one to get started.</p>
+          <Button className="mt-4" onClick={openCreate}>
+            Add Member
+          </Button>
+        </EmptyState>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((m, i) => (
-            <Card key={m.id}>
+            <Card key={m.id} className="cursor-pointer transition-colors hover:border-primary/40" onClick={() => openEdit(m)}>
               <div className="flex items-start gap-3">
                 {m.photo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -141,7 +151,7 @@ export default function TeamPage() {
                 </div>
               </div>
               {m.bio && <p className="mt-3 line-clamp-3 text-xs text-ink-dim">{m.bio}</p>}
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-1">
                   <IconButton title="Move up" onClick={() => move(i, -1)}>
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -183,19 +193,21 @@ export default function TeamPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Name</Label>
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+              <Label required>Name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
             </div>
             <div>
-              <Label>Role</Label>
-              <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} required />
+              <Label required>Role</Label>
+              <Input value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} />
+              {fieldErrors.role && <FieldError>{fieldErrors.role}</FieldError>}
             </div>
           </div>
           <div>
             <Label>Bio</Label>
             <Textarea rows={3} value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} />
           </div>
-          <ImageUrlField label="Photo URL" value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} />
+          <ImageUploader label="Photo" value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} />
           <div>
             <Label>LinkedIn URL</Label>
             <Input value={form.linkedin_url} onChange={(e) => setForm({ ...form, linkedin_url: e.target.value })} />

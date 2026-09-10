@@ -15,7 +15,7 @@ import {
   ErrorNote,
   Input,
   Label,
-  LoadingBlock,
+  TableSkeleton,
   Mono,
   PageHeader,
   Pagination,
@@ -211,7 +211,7 @@ export default function PurchasesPage() {
       </Card>
 
       {loading && !purchases ? (
-        <LoadingBlock />
+        <TableSkeleton cols={10} />
       ) : error && !purchases ? (
         <ErrorNote>{error}</ErrorNote>
       ) : filtered.length === 0 ? (

@@ -2,8 +2,10 @@
 
 import {
   useEffect,
+  useRef,
   useState,
   type ButtonHTMLAttributes,
+  type HTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
   type SelectHTMLAttributes,
@@ -11,8 +13,16 @@ import {
 } from 'react';
 import { truncateWallet } from '@/lib/format';
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-border bg-card p-5 sm:p-6 ${className}`}>{children}</div>;
+export function Card({
+  children,
+  className = '',
+  ...rest
+}: { children: ReactNode; className?: string } & HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div className={`rounded-2xl border border-border bg-card p-5 sm:p-6 ${className}`} {...rest}>
+      {children}
+    </div>
+  );
 }
 
 export function PageHeader({ title, description, action }: { title: string; description?: string; action?: ReactNode }) {
@@ -115,6 +125,48 @@ export function LoadingBlock() {
   );
 }
 
+// Shimmering placeholder rows shaped like a real table — shown in place of
+// LoadingBlock's spinner on the list pages, so the page doesn't jump/reflow
+// once real rows arrive (a spinner-then-table swap does).
+export function TableSkeleton({ rows = 8, cols = 6 }: { rows?: number; cols?: number }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <table className="w-full min-w-[720px] text-left text-sm">
+        <tbody className="divide-y divide-border">
+          {Array.from({ length: rows }).map((_, r) => (
+            <tr key={r}>
+              {Array.from({ length: cols }).map((_, c) => (
+                <td key={c} className="px-3 py-3.5">
+                  <div className="h-3.5 animate-pulse rounded bg-white/5" style={{ width: `${55 + ((r * 7 + c * 13) % 40)}%` }} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Same shimmer, for grid/card layouts (Team) instead of a table.
+export function CardGridSkeleton({ count = 6 }: { count?: number }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i}>
+          <div className="flex items-start gap-3">
+            <div className="h-14 w-14 shrink-0 animate-pulse rounded-full bg-white/5" />
+            <div className="min-w-0 flex-1 space-y-2 pt-1">
+              <div className="h-3.5 w-2/3 animate-pulse rounded bg-white/5" />
+              <div className="h-3 w-1/2 animate-pulse rounded bg-white/5" />
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function Input({ className = '', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
@@ -144,8 +196,27 @@ export function Textarea({ className = '', ...rest }: TextareaHTMLAttributes<HTM
   );
 }
 
-export function Label({ children }: { children: ReactNode }) {
-  return <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-ink-dim">{children}</label>;
+export function Label({ children, required }: { children: ReactNode; required?: boolean }) {
+  return (
+    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-widest text-ink-dim">
+      {children}
+      {required && (
+        <span className="ml-0.5 text-red" aria-hidden="true">
+          *
+        </span>
+      )}
+    </label>
+  );
+}
+
+// Inline validation message shown directly under an invalid field — pairs
+// with the `error` prop most form fields below accept.
+export function FieldError({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-1.5 text-xs text-red" role="alert">
+      {children}
+    </p>
+  );
 }
 
 export function Toggle({
@@ -313,23 +384,64 @@ export function Pagination({
   );
 }
 
-export const th = 'bg-card-hover px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
+export const th = 'sticky top-0 z-10 bg-card-hover px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
 export const td = 'px-3 py-2.5 align-middle';
+// For a table's rightmost "actions" column, in addition to `th`/`td`, so it
+// stays put while the table scrolls horizontally (long tables) or
+// vertically (sticky header still applies via top-0 here too).
+export const thActions = 'sticky right-0 top-0 z-20 bg-card-hover px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wider text-ink-dim whitespace-nowrap';
+export const tdActions = 'sticky right-0 z-[5] bg-card px-3 py-2.5 align-middle';
 
+// max-h + overflow-auto (not just overflow-x-auto) so `th`'s sticky top-0
+// actually has something to stick against — a table can be very tall (many
+// rows) without the whole page needing to scroll past its header.
 export function TableShell({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+    <div className="max-h-[70vh] overflow-auto rounded-2xl border border-border bg-card">
       <table className="w-full min-w-[720px] text-left text-sm">{children}</table>
     </div>
   );
 }
 
-export function Modal({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+export function Modal({
+  open,
+  onClose,
+  title,
+  children,
+  size = 'md',
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  size?: 'md' | 'lg';
+}) {
   const [mounted, setMounted] = useState(open);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open) setMounted(true);
   }, [open]);
+
+  // Escape closes; auto-focus the first focusable field so admins can start
+  // typing immediately without reaching for the mouse.
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    const id = requestAnimationFrame(() => {
+      const focusable = bodyRef.current?.querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])'
+      );
+      focusable?.focus();
+    });
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      cancelAnimationFrame(id);
+    };
+  }, [open, onClose]);
 
   if (!mounted) return null;
 
@@ -343,9 +455,9 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
           desktop height so the body (not the whole modal) scrolls once its
           content — e.g. the banner form's 9+ fields — exceeds that. */}
       <div
-        className={`relative flex h-full max-h-full w-full flex-col border-border bg-card shadow-2xl transition-all sm:h-auto sm:max-h-[80vh] sm:max-w-md sm:rounded-2xl sm:border ${
-          open ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
-        }`}
+        className={`relative flex h-full max-h-full w-full flex-col border-border bg-card shadow-2xl transition-all sm:h-auto sm:max-h-[80vh] ${
+          size === 'lg' ? 'sm:max-w-2xl' : 'sm:max-w-md'
+        } sm:rounded-2xl sm:border ${open ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
       >
         <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
           <h3 className="text-base font-bold text-ink">{title}</h3>
@@ -359,7 +471,9 @@ export function Modal({ open, onClose, title, children }: { open: boolean; onClo
             </svg>
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">{children}</div>
+        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -411,47 +525,3 @@ export function CopyableWallet({ wallet, lead = 6, trail = 4 }: { wallet: string
   );
 }
 
-// Text input for an admin-entered image URL with a live thumbnail preview —
-// shared by any CMS form that stores an image as a plain URL string (banner
-// images, team photos, media library items).
-export function ImageUrlField({
-  label,
-  value,
-  onChange,
-  required,
-  placeholder = 'https://…',
-}: {
-  label: string;
-  value: string | undefined;
-  onChange: (v: string) => void;
-  required?: boolean;
-  placeholder?: string;
-}) {
-  const [broken, setBroken] = useState(false);
-  const looksLikeUrl = !!value && /^https?:\/\//.test(value);
-
-  return (
-    <div>
-      <Label>{label}</Label>
-      <Input
-        value={value ?? ''}
-        onChange={(e) => {
-          setBroken(false);
-          onChange(e.target.value);
-        }}
-        placeholder={placeholder}
-        required={required}
-      />
-      {looksLikeUrl && !broken && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={value}
-          alt=""
-          className="mt-2 h-16 w-auto rounded border border-border object-cover"
-          onError={() => setBroken(true)}
-        />
-      )}
-      {looksLikeUrl && broken && <p className="mt-1.5 text-xs text-red">Invalid URL — image failed to load.</p>}
-    </div>
-  );
-}

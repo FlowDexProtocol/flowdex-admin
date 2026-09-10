@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useAdminAuth } from '@/context/admin-auth-context';
 import { useFetch } from '@/lib/hooks';
 import { getDashboard, getPublicDailyStats, getStatsByChain, getStatsDaily, getSubscriberCount, getSupply } from '@/lib/api';
@@ -9,6 +10,44 @@ import { Badge, Button, Card, ErrorNote, LoadingBlock, PageHeader, ProgressBar, 
 import { BuyersDonutChart, PurchasesLineChart, RevenueBarChart } from '@/components/DashboardCharts';
 
 const REFRESH_INTERVAL_MS = 60000;
+
+const SITE_URL = 'https://flowdexprotocol.com';
+const BUY_PAGE_URL = 'https://purchase.flowdexprotocol.com';
+
+function QuickActionLink({ href, external, children }: { href: string; external?: boolean; children: React.ReactNode }) {
+  const className =
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card-hover px-4 text-sm font-semibold text-ink transition-colors hover:border-primary/50 whitespace-nowrap';
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={className}>
+      {children}
+    </Link>
+  );
+}
+
+function QuickActionsBar() {
+  return (
+    <Card className="mb-6 !p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="px-1 text-xs font-semibold uppercase tracking-widest text-ink-faint">Quick actions</span>
+        <QuickActionLink href="/cms/blog/new">+ New Blog Post</QuickActionLink>
+        <QuickActionLink href="/cms/banners?new=1">+ Add Banner</QuickActionLink>
+        <QuickActionLink href={SITE_URL} external>
+          View Site ↗
+        </QuickActionLink>
+        <QuickActionLink href={BUY_PAGE_URL} external>
+          View Buy Page ↗
+        </QuickActionLink>
+      </div>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const { adminFetch } = useAdminAuth();
@@ -85,6 +124,8 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      <QuickActionsBar />
 
       {dashboardLoading && !dashboard ? (
         <LoadingBlock />
