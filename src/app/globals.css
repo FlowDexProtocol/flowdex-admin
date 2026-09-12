@@ -94,89 +94,146 @@ table tbody tr:hover {
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-/* ── react-quill-new dark theme ──
-   Quill's own "snow" theme (imported in RichTextEditor.tsx) is built for a
-   white page; this repaints it to match the admin's dark palette instead of
-   fighting Quill's inline SVG stroke/fill colors with !important everywhere. */
-.ql-toolbar.ql-snow {
-  border-color: var(--color-border);
-  background: var(--color-bg-soft);
-  border-radius: 0.75rem 0.75rem 0 0;
-}
-.ql-container.ql-snow {
-  border-color: var(--color-border);
-  border-radius: 0 0 0.75rem 0.75rem;
+/* ── TipTap (ProseMirror) editor dark theme ──
+   .tiptap-body is the contentEditable root (see RichTextEditor.tsx's
+   editorProps.attributes.class) — styled to the exact palette/typography
+   spec: bg #0B1A2E (--color-card), text #E8ECF1 (--color-ink), selection
+   rgba(98,126,234,0.3), placeholder #8899AA, links/blockquote #627EEA,
+   code block #060D18 (--color-bg), table borders #1A2A3F (--color-border),
+   table header #11253F (--color-card-hover). */
+.tiptap-body.ProseMirror {
+  min-height: 500px;
+  padding: 1rem 1.25rem;
+  color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 0.875rem;
+  font-size: 1rem;
+  line-height: 1.7;
+  outline: none;
+  caret-color: var(--color-ink);
 }
-.ql-editor {
-  color: var(--color-ink);
-  min-height: 400px;
-  max-width: 100%;
-  overflow-wrap: break-word;
-  word-break: break-word;
+.tiptap-body.ProseMirror ::selection {
+  background: rgba(98, 126, 234, 0.3);
 }
-.ql-container.ql-snow,
-.ql-toolbar.ql-snow {
-  max-width: 100%;
+.tiptap-body.ProseMirror p {
+  margin: 0 0 1rem;
 }
-.ql-editor.ql-blank::before {
-  color: var(--color-ink-faint);
-  font-style: normal;
-}
-.ql-snow .ql-stroke {
-  stroke: var(--color-ink-dim);
-}
-.ql-snow .ql-fill,
-.ql-snow .ql-stroke.ql-fill {
-  fill: var(--color-ink-dim);
-}
-.ql-snow .ql-picker {
+.tiptap-body.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
   color: var(--color-ink-dim);
+  pointer-events: none;
 }
-.ql-snow .ql-picker-options {
-  background: var(--color-card);
-  border-color: var(--color-border) !important;
+.tiptap-body.ProseMirror h2 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin: 1.75rem 0 0.75rem;
+  color: var(--color-ink);
 }
-.ql-snow .ql-picker-item:hover,
-.ql-snow .ql-picker-item.ql-selected {
+.tiptap-body.ProseMirror h3 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.25rem;
+  margin: 1.5rem 0 0.625rem;
+  color: var(--color-ink);
+}
+.tiptap-body.ProseMirror h4 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 1.125rem;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--color-ink);
+}
+.tiptap-body.ProseMirror a {
   color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
 }
-.ql-snow.ql-toolbar button:hover .ql-stroke,
-.ql-snow .ql-toolbar button:hover .ql-stroke,
-.ql-snow.ql-toolbar button.ql-active .ql-stroke,
-.ql-snow .ql-toolbar button.ql-active .ql-stroke,
-.ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke {
-  stroke: var(--color-primary);
-}
-.ql-snow.ql-toolbar button:hover .ql-fill,
-.ql-snow .ql-toolbar button:hover .ql-fill,
-.ql-snow.ql-toolbar button.ql-active .ql-fill,
-.ql-snow .ql-toolbar button.ql-active .ql-fill {
-  fill: var(--color-primary);
-}
-.ql-snow .ql-tooltip {
-  background: var(--color-card);
-  border-color: var(--color-border);
-  color: var(--color-ink);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-}
-.ql-snow .ql-tooltip input[type='text'] {
-  background: var(--color-bg-soft);
-  border-color: var(--color-border);
-  color: var(--color-ink);
-}
-.ql-editor blockquote {
-  border-left-color: var(--color-border);
+.tiptap-body.ProseMirror blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding: 0.5rem 1rem;
+  margin: 1rem 0;
   color: var(--color-ink-dim);
+  font-style: italic;
 }
-.ql-editor pre.ql-syntax {
-  background: var(--color-bg-soft);
+.tiptap-body.ProseMirror pre {
+  background: var(--color-bg);
   color: var(--color-ink);
+  font-family: var(--font-mono);
+  padding: 1rem;
   border-radius: 0.5rem;
+  margin: 1rem 0;
+  overflow-x: auto;
 }
-.ql-editor a {
-  color: var(--color-primary);
+.tiptap-body.ProseMirror pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  font-size: 0.8125rem;
+}
+.tiptap-body.ProseMirror code {
+  background: var(--color-bg);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+.tiptap-body.ProseMirror ul,
+.tiptap-body.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0 0 1rem;
+}
+.tiptap-body.ProseMirror li {
+  margin: 0.25rem 0;
+}
+.tiptap-body.ProseMirror hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+.tiptap-body.ProseMirror mark {
+  border-radius: 0.2rem;
+  padding: 0 0.1rem;
+  color: #0b1a2e;
+}
+.tiptap-body.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+}
+.tiptap-body.ProseMirror th,
+.tiptap-body.ProseMirror td {
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  position: relative;
+}
+.tiptap-body.ProseMirror th {
+  background: var(--color-card-hover);
+  font-weight: 700;
+  text-align: left;
+}
+.tiptap-body.ProseMirror .selectedCell {
+  background: rgba(98, 126, 234, 0.15);
+}
+.tiptap-body.ProseMirror .yt-embed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1rem 0;
+}
+.tiptap-body.ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .tiptap-body.ProseMirror {
+    min-height: 320px;
+    padding: 0.75rem 1rem;
+  }
 }
 
 /* Blog post preview modal — renders the same rich-text-editor HTML as the
@@ -250,4 +307,28 @@ table tbody tr:hover {
   height: auto;
   border-radius: 0.75rem;
   margin: 1rem 0;
+}
+.prose-blog table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+.prose-blog th,
+.prose-blog td {
+  border: 1px solid var(--color-border);
+  padding: 0.75rem;
+  text-align: left;
+}
+.prose-blog th {
+  background: var(--color-card-hover);
+  font-weight: 700;
+}
+.prose-blog iframe {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  border: 0;
 }

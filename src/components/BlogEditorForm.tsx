@@ -19,7 +19,17 @@ function BlogPreviewModal({ open, onClose, values }: { open: boolean; onClose: (
   // Post content is admin-authored HTML (from the rich text editor), not
   // plain text — sanitized here because an editor-level account previewing
   // is one trust tier below whoever might later open the same preview.
-  const safeHtml = DOMPurify.sanitize(values.content || '<p class="text-ink-faint">No content yet.</p>');
+  // DOMPurify's defaults exclude iframe and don't scope style values at
+  // all, both needed now that the editor can produce YouTube embeds and
+  // text-align styles — ADD_TAGS/ADD_ATTR opts in narrowly rather than
+  // disabling sanitization for either. This mirrors (but isn't required to
+  // exactly match) the live site's own sanitize-html allowlist in
+  // flowdex-landing/src/lib/sanitize.ts — this modal is only ever shown to
+  // an already-authenticated admin previewing their own draft.
+  const safeHtml = DOMPurify.sanitize(values.content || '<p class="text-ink-faint">No content yet.</p>', {
+    ADD_TAGS: ['iframe'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'target', 'rel', 'style', 'data-align', 'width', 'height'],
+  });
 
   return (
     <Modal open={open} onClose={onClose} title="Preview" size="lg">

@@ -2,34 +2,44 @@
 
 // ══════════════════════════════════════════════════
 // src/components/RichTextEditor.tsx
-// Dark-themed wrapper around react-quill-new for blog post content — plain
-// <textarea> replaced per the CMS blog editor overhaul. Quill touches
-// `document` at import time, so the library itself is loaded via
-// next/dynamic(ssr:false) here rather than a top-level import — that keeps
-// this file itself safely importable from a server-rendered page.
+// TipTap (ProseMirror) rich text editor for blog post content — replaces
+// the previous react-quill-new editor entirely. Same external contract
+// (value/onChange/onImageUpload/placeholder) as before, so BlogEditorForm
+// didn't need to change how it uses this component.
 // ══════════════════════════════════════════════════
 
-import dynamic from 'next/dynamic';
-import { useMemo, useRef, type ComponentProps, type ForwardRefExoticComponent, type RefAttributes } from 'react';
-import 'react-quill-new/dist/quill.snow.css';
-import type ReactQuillType from 'react-quill-new';
-import { Spinner } from './ui';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import Placeholder from '@tiptap/extension-placeholder';
+import TextAlign from '@tiptap/extension-text-align';
+import { TextStyle, Color, FontSize } from '@tiptap/extension-text-style';
+import Highlight from '@tiptap/extension-highlight';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableHeader from '@tiptap/extension-table-header';
+import TableCell from '@tiptap/extension-table-cell';
+import Youtube from '@tiptap/extension-youtube';
+import Subscript from '@tiptap/extension-subscript';
+import Superscript from '@tiptap/extension-superscript';
+import Typography from '@tiptap/extension-typography';
+import CharacterCount from '@tiptap/extension-character-count';
+import { useEffect } from 'react';
+import { resolveAssetUrl } from '@/lib/api';
+import { ResizableImage } from './tiptap/ResizableImage';
+import { CustomStrike } from './tiptap/CustomStrike';
+import Toolbar from './tiptap/Toolbar';
 
-// next/dynamic's own type doesn't know the loaded component accepts a ref
-// (it does — ReactQuill is a class component) — corrected here rather than
-// dropping the ref this file actually needs for the image-upload handler.
-// react-quill-new doesn't export its props type by name, so it's pulled
-// back out of the default-exported class itself via ComponentProps.
-const ReactQuill = dynamic(() => import('react-quill-new'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex min-h-[400px] items-center justify-center rounded-xl border border-border bg-bg-soft">
-      <Spinner className="h-5 w-5 text-primary" />
-    </div>
-  ),
-}) as unknown as ForwardRefExoticComponent<ComponentProps<typeof ReactQuillType> & RefAttributes<ReactQuillType>>;
-
-const FORMATS = ['header', 'bold', 'italic', 'underline', 'strike', 'list', 'blockquote', 'code-block', 'link', 'image'];
+// Safety net for any relative /uploads/... image src that reaches saved
+// HTML without having gone through the insert-time upload flow (e.g. a
+// URL typed by hand into the "Paste URL" tab, or content pasted in from
+// elsewhere) — everything inserted via the toolbar's own upload button is
+// already absolute by the time it lands in the doc (onImageUpload already
+// resolves it), so this only ever has stragglers left to catch.
+function resolveRelativeImageUrls(html: string): string {
+  return html.replace(/(<img[^>]*\bsrc=")([^"]+)(")/gi, (match, pre, src, post) => `${pre}${resolveAssetUrl(src)}${post}`);
+}
 
 export default function RichTextEditor({
   value,
@@ -39,83 +49,86 @@ export default function RichTextEditor({
 }: {
   value: string;
   onChange: (html: string) => void;
-  // Uploads the picked file and resolves to the URL to embed — the editor
-  // itself has no API access, so this is threaded down from whichever page
-  // owns adminFetch (mirrors ImageUploader's own upload flow).
+  // Uploads the picked file and resolves to the absolute URL to embed —
+  // the editor itself has no API access, so this is threaded down from
+  // whichever page owns adminFetch (mirrors ImageUploader's own flow).
   onImageUpload: (file: File) => Promise<string>;
   placeholder?: string;
 }) {
-  const quillRef = useRef<ReactQuillType | null>(null);
+  const editor = useEditor({
+    immediatelyRender: false,
+    extensions: [
+      StarterKit.configure({
+        // Replaced with their standalone packages below — link/underline
+        // for explicit configuration (open-in-new-tab, autolink on paste),
+        // strike for its Ctrl+Shift+X shortcut.
+        link: false,
+        underline: false,
+        strike: false,
+        heading: { levels: [2, 3, 4] },
+      }),
+      Underline,
+      CustomStrike,
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+      }),
+      ResizableImage.configure({ inline: false }),
+      Placeholder.configure({ placeholder }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      TextStyle,
+      Color,
+      FontSize,
+      Highlight.configure({ multicolor: true }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      Youtube.configure({ nocookie: true, HTMLAttributes: { class: 'yt-embed' } }),
+      Subscript,
+      Superscript,
+      Typography,
+      CharacterCount,
+    ],
+    content: value,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-body',
+      },
+    },
+    onUpdate({ editor }) {
+      onChange(resolveRelativeImageUrls(editor.getHTML()));
+    },
+  });
 
-  const modules = useMemo(
-    () => ({
-      // The browser's native Ctrl/Cmd+A selects one position past Quill's
-      // real content (its always-present trailing newline). Formatting that
-      // over-extended selection makes Quill create a phantom cursor-holder
-      // node instead of wrapping the actual text — e.g. Ctrl+A then Bold
-      // visibly does nothing. Overriding selectAll to stop one index short
-      // of quill.getLength() (which already counts that trailing newline)
-      // keeps the selection inside real content so formatting applies to it.
-      keyboard: {
-        bindings: {
-          selectAll: {
-            key: 'a',
-            shortKey: true,
-            handler(this: { quill: import('quill').default }) {
-              this.quill.setSelection(0, this.quill.getLength() - 1, 'user');
-              // Returning false tells Quill's keyboard module to
-              // preventDefault() the native browser Select-All — otherwise
-              // it fires right after this and re-overselects past the end.
-              return false;
-            },
-          },
-        },
-      },
-      toolbar: {
-        container: [
-          [{ header: [2, 3, 4, false] }],
-          ['bold', 'italic', 'underline', 'strike'],
-          [{ list: 'ordered' }, { list: 'bullet' }],
-          ['blockquote', 'code-block'],
-          ['link', 'image'],
-          ['clean'],
-        ],
-        handlers: {
-          // Overrides Quill's default image handler, which would otherwise
-          // inline the picked file as a base64 data: URI straight into the
-          // post content — this uploads it via POST /admin/upload instead
-          // and embeds the resulting /uploads/... URL.
-          image() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.onchange = async () => {
-              const file = input.files?.[0];
-              if (!file) return;
-              const editor = quillRef.current?.getEditor();
-              const range = editor?.getSelection(true);
-              try {
-                const url = await onImageUpload(file);
-                if (editor && range) {
-                  editor.insertEmbed(range.index, 'image', url, 'user');
-                  editor.setSelection(range.index + 1, 0, 'user');
-                }
-              } catch {
-                // onImageUpload's caller is responsible for surfacing the
-                // error (toast) — nothing to insert if it failed.
-              }
-            };
-            input.click();
-          },
-        },
-      },
-    }),
-    [onImageUpload]
-  );
+  // The form component may reset `value` out from under the editor (e.g.
+  // loading a post to edit after the editor already mounted with empty
+  // content) — sync it in without fighting the user's own typing by only
+  // doing so when the incoming value actually differs from current content.
+  useEffect(() => {
+    if (!editor) return;
+    if (value !== editor.getHTML()) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [value, editor]);
+
+  if (!editor) {
+    return <div className="min-h-[500px] animate-pulse rounded-lg border border-border bg-card" />;
+  }
+
+  const words = editor.storage.characterCount.words();
+  const characters = editor.storage.characterCount.characters();
 
   return (
-    <div className="overflow-hidden rounded-xl">
-      <ReactQuill ref={quillRef} theme="snow" value={value} onChange={onChange} modules={modules} formats={FORMATS} placeholder={placeholder} />
+    <div className="overflow-hidden rounded-lg border border-border">
+      <Toolbar editor={editor} onImageUpload={onImageUpload} />
+      <div className="max-h-[70vh] overflow-y-auto bg-card">
+        <EditorContent editor={editor} />
+      </div>
+      <div className="flex items-center justify-end border-t border-border bg-card-hover px-3 py-1.5 text-xs text-ink-faint">
+        {words} words · {characters} characters
+      </div>
     </div>
   );
 }
