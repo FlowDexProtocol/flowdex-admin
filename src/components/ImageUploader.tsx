@@ -14,7 +14,7 @@ import { useAdminAuth } from '@/context/admin-auth-context';
 import { useToast } from '@/context/toast-context';
 import { createCmsMedia, deleteCmsMedia, getCmsMedia, resolveAssetUrl, uploadFile } from '@/lib/api';
 import type { CmsMedia } from '@/lib/types';
-import { Button, EmptyState, ErrorNote, Label, LoadingBlock, Modal, Spinner } from './ui';
+import { Button, EmptyState, ErrorNote, Input, Label, LoadingBlock, Modal, Spinner } from './ui';
 import ConfirmDialog from './ConfirmDialog';
 
 function UploadIcon() {
@@ -124,16 +124,67 @@ function BrowseExistingModal({ open, onClose, onSelect }: { open: boolean; onClo
   );
 }
 
+const IMAGE_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,image/svg+xml';
+const MEDIA_ACCEPT = `${IMAGE_ACCEPT},video/mp4,application/json`;
+// Logo's "Animated" mode specifically — gif/mp4/json only, not the static
+// image formats "media" also allows (an animated logo that's actually a
+// static PNG defeats the point of the mode).
+const ANIMATED_ACCEPT = 'image/gif,video/mp4,application/json';
+const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+
+// Value is a URL (uploaded or pasted) — the extension is the only signal we
+// have for how to preview it, same way the landing site itself decides
+// image vs gif vs video vs Lottie at render time.
+export type MediaKind = 'image' | 'video' | 'lottie' | 'unknown';
+export function detectMediaKind(url: string): MediaKind {
+  const path = url.split('?')[0].split('#')[0];
+  const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase();
+  if (IMAGE_EXTENSIONS.includes(ext)) return 'image';
+  if (ext === 'mp4') return 'video';
+  if (ext === 'json') return 'lottie';
+  return 'unknown';
+}
+export function fileNameFromUrl(url: string): string {
+  const path = url.split('?')[0].split('#')[0];
+  return path.slice(path.lastIndexOf('/') + 1) || url;
+}
+
+export function MediaPreview({ value, className }: { value: string; className?: string }) {
+  const sizeClass = className ?? 'h-20 w-20 shrink-0 rounded-lg border border-border object-cover';
+  const kind = detectMediaKind(value);
+  if (kind === 'video') {
+    return <video src={value} className={sizeClass} autoPlay loop muted playsInline />;
+  }
+  if (kind === 'lottie') {
+    return (
+      <div className={`flex flex-col items-center justify-center gap-1 bg-bg-soft p-1 text-center ${sizeClass}`}>
+        <span className="text-[9px] font-semibold uppercase tracking-wide text-primary">Lottie</span>
+        <span className="truncate px-1 text-[9px] text-ink-faint" title={fileNameFromUrl(value)}>
+          {fileNameFromUrl(value)}
+        </span>
+      </div>
+    );
+  }
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={value} alt="" className={sizeClass} />;
+}
+
 export default function ImageUploader({
   label,
   value,
   onChange,
   required,
+  kind = 'image',
 }: {
   label?: string;
   value: string | null | undefined;
   onChange: (url: string) => void;
   required?: boolean;
+  // 'image' = static images only (jpg/png/gif/webp/svg); 'media' additionally
+  // allows mp4 (video) and json (Lottie) — used for the CMS's 'media' field
+  // type (animated logos, ecosystem-card animations). 'animated' is
+  // narrower still — gif/mp4/json only, for the Logo editor's Animated mode.
+  kind?: 'image' | 'media' | 'animated';
 }) {
   const { adminFetch } = useAdminAuth();
   const { showToast } = useToast();
@@ -143,6 +194,16 @@ export default function ImageUploader({
   const [dragOver, setDragOver] = useState(false);
   const [browseOpen, setBrowseOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [urlMode, setUrlMode] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
+
+  const accept = kind === 'media' ? MEDIA_ACCEPT : kind === 'animated' ? ANIMATED_ACCEPT : IMAGE_ACCEPT;
+  const hint =
+    kind === 'media'
+      ? 'JPG, PNG, GIF, WEBP, SVG, MP4, or Lottie JSON — up to 15MB'
+      : kind === 'animated'
+        ? 'GIF, MP4, or Lottie JSON — up to 15MB'
+        : 'JPG, PNG, GIF, WEBP, or SVG — up to 15MB';
 
   async function handleFile(file: File) {
     setError(null);
@@ -177,15 +238,22 @@ export default function ImageUploader({
     if (file) handleFile(file);
   }
 
+  function submitUrl() {
+    const url = urlDraft.trim();
+    if (!url) return;
+    onChange(url);
+    setUrlDraft('');
+    setUrlMode(false);
+  }
+
   return (
     <div>
       {label && <Label required={required}>{label}</Label>}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onPick} />
+      <input ref={fileInputRef} type="file" accept={accept} className="hidden" onChange={onPick} />
 
       {value ? (
         <div className="flex items-start gap-3 rounded-xl border border-border p-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="" className="h-20 w-20 shrink-0 rounded-lg border border-border object-cover" />
+          <MediaPreview value={value} />
           <div className="min-w-0 flex-1 space-y-2">
             <p className="truncate font-mono text-xs text-ink-faint">{value}</p>
             <div className="flex flex-wrap gap-1.5">
@@ -214,38 +282,69 @@ export default function ImageUploader({
           </div>
         </div>
       ) : (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={onDrop}
-          className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-            dragOver ? 'border-primary bg-primary-dim' : 'border-border'
-          }`}
-        >
-          {uploading ? (
-            <>
-              <Spinner className="h-5 w-5 text-primary" />
-              <p className="text-xs text-ink-dim">Uploading… {progress}%</p>
-            </>
-          ) : (
-            <>
-              <UploadIcon />
-              <p className="text-sm text-ink-dim">Drag &amp; drop an image, or</p>
-              <div className="flex flex-wrap justify-center gap-2">
-                <Button type="button" variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
-                  Click to Upload
+        <>
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            className={`flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+              dragOver ? 'border-primary bg-primary-dim' : 'border-border'
+            }`}
+          >
+            {uploading ? (
+              <>
+                <Spinner className="h-5 w-5 text-primary" />
+                <p className="text-xs text-ink-dim">Uploading… {progress}%</p>
+              </>
+            ) : (
+              <>
+                <UploadIcon />
+                <p className="text-sm text-ink-dim">Drag &amp; drop {kind === 'image' ? 'an image' : 'a file'}, or</p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button type="button" variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => fileInputRef.current?.click()}>
+                    Click to Upload
+                  </Button>
+                  <Button type="button" variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => setBrowseOpen(true)}>
+                    Browse Existing
+                  </Button>
+                </div>
+                <p className="text-xs text-ink-faint">{hint}</p>
+              </>
+            )}
+          </div>
+
+          {!uploading &&
+            (urlMode ? (
+              <div className="mt-2 flex gap-1.5">
+                <Input
+                  value={urlDraft}
+                  onChange={(e) => setUrlDraft(e.target.value)}
+                  placeholder="https://… or /uploads/…"
+                  className="font-mono text-xs"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      submitUrl();
+                    }
+                  }}
+                />
+                <Button type="button" className="!min-h-0 shrink-0 !px-3 !py-1.5 text-xs" onClick={submitUrl}>
+                  Use
                 </Button>
-                <Button type="button" variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => setBrowseOpen(true)}>
-                  Browse Existing
+                <Button type="button" variant="ghost" className="!min-h-0 shrink-0 !px-2 !py-1.5 text-xs" onClick={() => setUrlMode(false)}>
+                  Cancel
                 </Button>
               </div>
-              <p className="text-xs text-ink-faint">JPG, PNG, GIF, WEBP, or SVG — up to 5MB</p>
-            </>
-          )}
-        </div>
+            ) : (
+              <button type="button" onClick={() => setUrlMode(true)} className="mt-2 text-xs text-primary hover:underline">
+                Or paste URL
+              </button>
+            ))}
+        </>
       )}
 
       {error && <p className="mt-1.5 text-xs text-red">{error}</p>}

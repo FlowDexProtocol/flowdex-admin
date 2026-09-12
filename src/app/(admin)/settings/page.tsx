@@ -206,8 +206,10 @@ function EmailSettingsCard() {
   useEffect(() => {
     let cancelled = false;
     adminFetch((token) => getCmsPageContent(token, 'global'))
-      .then((content) => {
+      .then((rows) => {
         if (cancelled) return;
+        const content: Record<string, string> = {};
+        for (const r of rows) content[`${r.section}.${r.field}`] = r.value;
         if (content['email.from_email']) setFromEmail(content['email.from_email']);
         if (content['email.daily_digest_enabled']) setDailyDigest(content['email.daily_digest_enabled'] === 'true');
         if (content['email.large_purchase_threshold']) setThreshold(content['email.large_purchase_threshold']);

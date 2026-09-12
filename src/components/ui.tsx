@@ -250,20 +250,23 @@ export function IconButton({
   onClick,
   title,
   variant = 'ghost',
+  disabled = false,
   children,
 }: {
   onClick: () => void;
   title: string;
   variant?: 'ghost' | 'danger';
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       title={title}
       aria-label={title}
-      className={`flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors ${
+      className={`flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         variant === 'danger' ? 'text-ink-dim hover:border-red/50 hover:text-red' : 'text-ink-dim hover:border-primary/50 hover:text-primary'
       }`}
     >

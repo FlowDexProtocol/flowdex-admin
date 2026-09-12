@@ -31,7 +31,8 @@ import type {
   CmsFaqPayload,
   CmsMedia,
   CmsMediaPayload,
-  CmsPageContent,
+  CmsFieldType,
+  CmsPageFieldRow,
   CmsTeamMember,
   CmsTeamPayload,
   ChainStat,
@@ -419,21 +420,27 @@ export function uploadFile(token: string, file: File, onProgress?: (pct: number)
 
 // ── CMS: Page Content ──
 export const getCmsPages = (token: string) => request<string[]>('/admin/cms/pages', { token });
-export const getCmsPageContent = (token: string, page: string) => request<CmsPageContent>(`/admin/cms/page/${page}`, { token });
-export const setCmsPageField = (token: string, page: string, section: string, field: string, value: string) =>
-  request<{ success: boolean; content: { page: string; section: string; field: string; value: string } }>(
-    `/admin/cms/page/${page}/${section}/${field}`,
-    { method: 'PUT', body: { value }, token }
-  );
+// Returns every row for the page, ordered by section_order then
+// field_order — the admin's own ordering, unrelated to the public
+// GET /api/cms/page/:page (which stays a flat {section.field: value} object
+// for the landing/purchase sites and doesn't care about display order).
+export const getCmsPageContent = (token: string, page: string) => request<CmsPageFieldRow[]>(`/admin/cms/page/${page}`, { token });
+export const setCmsPageField = (token: string, page: string, section: string, field: string, value: string, fieldType?: CmsFieldType) =>
+  request<{ success: boolean; content: CmsPageFieldRow }>(`/admin/cms/page/${page}/${section}/${field}`, {
+    method: 'PUT',
+    body: fieldType ? { value, field_type: fieldType } : { value },
+    token,
+  });
 
 export interface CmsPageFieldUpdate {
   page: string;
   section: string;
   field: string;
   value: string;
+  field_type?: CmsFieldType;
 }
 export const bulkUpdateCmsPageFields = (token: string, updates: CmsPageFieldUpdate[]) =>
-  request<{ success: boolean; updated: number }>('/admin/cms/page/bulk-update', { method: 'POST', body: { updates }, token });
+  request<{ success: boolean; updated: number; content: CmsPageFieldRow[] }>('/admin/cms/page/bulk-update', { method: 'POST', body: { updates }, token });
 
 // Deletion is destructive/irreversible — the backend restricts all three to
 // super_admin regardless of the router's editor-level default.
@@ -443,6 +450,71 @@ export const deleteCmsPageSection = (token: string, page: string, section: strin
   request<{ success: boolean; deleted: number }>(`/admin/cms/page/${page}/${section}`, { method: 'DELETE', token });
 export const deleteCmsPage = (token: string, page: string) =>
   request<{ success: boolean; deleted: number }>(`/admin/cms/page/${page}`, { method: 'DELETE', token });
+
+// section_order/field_order both express display order via array position
+// — swapping two items means resending the whole list in its new order.
+export const reorderCmsPageSections = (token: string, page: string, sections: string[]) =>
+  request<{ success: boolean; order: string[] }>('/admin/cms/page/reorder', { method: 'POST', body: { page, sections }, token });
+export const reorderCmsPageFields = (token: string, page: string, section: string, fields: string[]) =>
+  request<{ success: boolean; order: string[] }>('/admin/cms/page/reorder-fields', { method: 'POST', body: { page, section, fields }, token });
+
+// ── CMS: Whitepaper ──
+export interface WhitepaperUploadResponse {
+  success: boolean;
+  url: string;
+}
+export function uploadWhitepaper(token: string, file: File, onProgress?: (pct: number) => void): Promise<WhitepaperUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}/admin/upload/whitepaper`);
+    xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+
+    xhr.onload = () => {
+      let data: unknown = null;
+      try {
+        data = JSON.parse(xhr.responseText);
+      } catch {
+        data = null;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data as WhitepaperUploadResponse);
+      } else {
+        const payload = (data ?? {}) as { error?: string };
+        reject(new ApiError(payload.error || `Upload failed (${xhr.status})`, xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new ApiError('Network error — could not reach the FlowDex API.', 0));
+
+    xhr.send(formData);
+  });
+}
+// Public — no admin token needed, matches the landing site's own
+// GET /api/cms/settings/whitepaper.
+export const getWhitepaperSetting = () => request<{ url: string }>('/api/cms/settings/whitepaper');
+
+// The upload endpoint doesn't report file size or existence directly — a
+// HEAD request against the resolved URL gets both from ordinary HTTP
+// semantics (Content-Length, 404 vs 200) without needing a dedicated
+// "status" endpoint.
+export async function getWhitepaperStatus(): Promise<{ exists: boolean; url: string; sizeBytes: number | null }> {
+  const { url } = await getWhitepaperSetting();
+  const fullUrl = resolveAssetUrl(url);
+  try {
+    const res = await fetch(fullUrl, { method: 'HEAD', cache: 'no-store' });
+    if (!res.ok) return { exists: false, url, sizeBytes: null };
+    const len = res.headers.get('content-length');
+    return { exists: true, url, sizeBytes: len ? parseInt(len, 10) : null };
+  } catch {
+    return { exists: false, url, sizeBytes: null };
+  }
+}
 
 // ── CMS: Media ──
 export const getCmsMedia = (token: string) => request<CmsMedia[]>('/admin/cms/media', { token });

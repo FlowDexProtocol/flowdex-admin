@@ -10,13 +10,16 @@ import {
   deleteCmsPageSection,
   getCmsPageContent,
   getCmsPages,
-  setCmsPageField,
+  reorderCmsPageFields,
+  reorderCmsPageSections,
 } from '@/lib/api';
+import type { CmsFieldType, CmsPageFieldRow } from '@/lib/types';
 import { Button, Card, EmptyState, ErrorNote, IconButton, Input, Label, LoadingBlock, Modal, PageHeader, Select, Textarea } from '@/components/ui';
+import CmsFieldEditor from '@/components/CmsFieldEditor';
 import ConfirmDialog from '@/components/ConfirmDialog';
 
 const FALLBACK_PAGES = ['home', 'global', 'nav', 'tokenomics', 'roadmap', 'terms', 'privacy', 'legal', 'buy'];
-const LONG_VALUE_THRESHOLD = 100;
+const FIELD_TYPES: CmsFieldType[] = ['text', 'textarea', 'image', 'media', 'url', 'number', 'color'];
 
 // Section/page/field keys are addressed as "section.field" strings and
 // stored in VARCHAR(50) columns — lowercase snake_case only, so a space
@@ -25,106 +28,38 @@ function toKeySlug(input: string): string {
   return input.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
 }
 
-function fieldEditor(value: string, draft: string, setDraft: (v: string) => void) {
-  const useTextarea = draft.length >= LONG_VALUE_THRESHOLD || draft.includes(',');
-  if (!useTextarea) {
-    return <Input value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />;
-  }
+function TrashIcon() {
   return (
-    <div>
-      <Textarea rows={4} value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
-      {draft.includes(',') && <p className="mt-1 text-xs text-ink-faint">Separate items with commas</p>}
-    </div>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
-
-function EditableRow({
-  page,
-  section,
-  field,
-  value,
-  canDelete,
-  onSaved,
-  onDeleteRequested,
-}: {
-  page: string;
-  section: string;
-  field: string;
-  value: string;
-  canDelete: boolean;
-  onSaved: (section: string, field: string, value: string) => void;
-  onDeleteRequested: (section: string, field: string) => void;
-}) {
-  const { adminFetch } = useAdminAuth();
-  const { showToast } = useToast();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await adminFetch((t) => setCmsPageField(t, page, section, field, draft));
-      showToast('success', 'Page content updated');
-      onSaved(section, field, draft);
-      setEditing(false);
-    } catch (err) {
-      showToast('error', err instanceof Error ? err.message : 'Failed to update page content');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const preview = value.length > 60 ? `${value.slice(0, 60)}…` : value;
-
+function ChevronIcon({ open }: { open: boolean }) {
   return (
-    <div className="border-t border-border px-4 py-3 first:border-t-0">
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-mono text-xs text-ink-faint">{field}</p>
-        {!editing && (
-          <div className="flex shrink-0 items-center gap-1.5">
-            <Button variant="secondary" className="!min-h-0 !px-3 !py-1.5 text-xs" onClick={() => setEditing(true)}>
-              Edit
-            </Button>
-            {canDelete && (
-              <IconButton title="Delete field" variant="danger" onClick={() => onDeleteRequested(section, field)}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"
-                    stroke="currentColor"
-                    strokeWidth="1.75"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </IconButton>
-            )}
-          </div>
-        )}
-      </div>
-      {editing ? (
-        <div className="mt-2 space-y-2">
-          {fieldEditor(value, draft, setDraft)}
-          <div className="flex gap-1.5">
-            <Button className="!min-h-0 !px-3 !py-1.5 text-xs" disabled={saving} onClick={handleSave}>
-              {saving ? 'Saving…' : 'Save'}
-            </Button>
-            <Button
-              variant="ghost"
-              className="!min-h-0 !px-3 !py-1.5 text-xs"
-              onClick={() => {
-                setDraft(value);
-                setEditing(false);
-              }}
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{preview || <span className="text-ink-faint">—</span>}</p>
-      )}
-    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className={`text-ink-faint transition-transform ${open ? 'rotate-180' : ''}`}>
+      <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ArrowUpIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+      <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function ArrowDownIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+      <path d="M12 5v14M5 12l7 7 7-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -133,24 +68,52 @@ function SectionGroup({
   section,
   rows,
   canDelete,
+  open,
+  onToggle,
   onSaved,
   onDeleteField,
   onDeleteSection,
+  onMoveField,
+  onMoveSection,
+  moveSectionUpDisabled,
+  moveSectionDownDisabled,
+  busyKey,
 }: {
   page: string;
   section: string;
-  rows: { field: string; value: string }[];
+  rows: CmsPageFieldRow[];
   canDelete: boolean;
+  open: boolean;
+  onToggle: () => void;
   onSaved: (section: string, field: string, value: string) => void;
   onDeleteField: (section: string, field: string) => void;
   onDeleteSection: (section: string) => void;
+  onMoveField: (section: string, field: string, direction: 'up' | 'down') => void;
+  onMoveSection: (section: string, direction: 'up' | 'down') => void;
+  moveSectionUpDisabled: boolean;
+  moveSectionDownDisabled: boolean;
+  busyKey: string | null;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
     <Card className="!p-0 overflow-hidden">
       <div className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-3">
-        <button type="button" onClick={() => setOpen((v) => !v)} className="flex flex-1 items-center gap-3 text-left">
+        <div className="flex shrink-0 flex-col gap-0.5">
+          <IconButton
+            title="Move section up"
+            disabled={busyKey === section || moveSectionUpDisabled}
+            onClick={() => onMoveSection(section, 'up')}
+          >
+            <ArrowUpIcon />
+          </IconButton>
+          <IconButton
+            title="Move section down"
+            disabled={busyKey === section || moveSectionDownDisabled}
+            onClick={() => onMoveSection(section, 'down')}
+          >
+            <ArrowDownIcon />
+          </IconButton>
+        </div>
+        <button type="button" onClick={onToggle} className="flex flex-1 items-center gap-3 text-left">
           <span className="text-sm font-semibold text-ink">{section}</span>
           <span className="text-xs text-ink-faint">
             {rows.length} field{rows.length === 1 ? '' : 's'}
@@ -159,42 +122,34 @@ function SectionGroup({
         <div className="flex shrink-0 items-center gap-1.5">
           {canDelete && (
             <IconButton title="Delete section" variant="danger" onClick={() => onDeleteSection(section)}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6h16Z"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+              <TrashIcon />
             </IconButton>
           )}
-          <button type="button" onClick={() => setOpen((v) => !v)} aria-label={open ? 'Collapse section' : 'Expand section'}>
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              className={`text-ink-faint transition-transform ${open ? 'rotate-180' : ''}`}
-            >
-              <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+          <button type="button" onClick={onToggle} aria-label={open ? 'Collapse section' : 'Expand section'}>
+            <ChevronIcon open={open} />
           </button>
         </div>
       </div>
       {open && (
         <div>
-          {rows.map((r) => (
-            <EditableRow
+          {rows.map((r, i) => (
+            <CmsFieldEditor
               key={r.field}
               page={page}
               section={section}
               field={r.field}
               value={r.value}
+              fieldType={r.field_type}
               canDelete={canDelete}
               onSaved={onSaved}
               onDeleteRequested={onDeleteField}
+              reorder={{
+                onMoveUp: () => onMoveField(section, r.field, 'up'),
+                onMoveDown: () => onMoveField(section, r.field, 'down'),
+                moveUpDisabled: i === 0,
+                moveDownDisabled: i === rows.length - 1,
+                busy: busyKey === `${section}:${r.field}`,
+              }}
             />
           ))}
         </div>
@@ -209,6 +164,7 @@ interface DraftField {
   id: number;
   name: string;
   value: string;
+  fieldType: CmsFieldType;
 }
 
 function DynamicFieldRows({ rows, onChange }: { rows: DraftField[]; onChange: (rows: DraftField[]) => void }) {
@@ -216,7 +172,7 @@ function DynamicFieldRows({ rows, onChange }: { rows: DraftField[]; onChange: (r
 
   function addRow() {
     idRef.current += 1;
-    onChange([...rows, { id: idRef.current, name: '', value: '' }]);
+    onChange([...rows, { id: idRef.current, name: '', value: '', fieldType: 'text' }]);
   }
   function updateRow(id: number, patch: Partial<DraftField>) {
     onChange(rows.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -230,13 +186,26 @@ function DynamicFieldRows({ rows, onChange }: { rows: DraftField[]; onChange: (r
       {rows.map((row) => (
         <div key={row.id} className="flex items-start gap-2 rounded-lg border border-border p-3">
           <div className="min-w-0 flex-1 space-y-2">
-            <Input
-              value={row.name}
-              onChange={(e) => updateRow(row.id, { name: toKeySlug(e.target.value) })}
-              placeholder="field_name"
-              className="font-mono text-xs"
-              maxLength={50}
-            />
+            <div className="flex gap-2">
+              <Input
+                value={row.name}
+                onChange={(e) => updateRow(row.id, { name: toKeySlug(e.target.value) })}
+                placeholder="field_name"
+                className="min-w-0 flex-1 font-mono text-xs"
+                maxLength={50}
+              />
+              <Select
+                value={row.fieldType}
+                onChange={(e) => updateRow(row.id, { fieldType: e.target.value as CmsFieldType })}
+                className="w-32 shrink-0 text-xs"
+              >
+                {FIELD_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </Select>
+            </div>
             <Textarea
               rows={2}
               value={row.value}
@@ -299,7 +268,12 @@ function AddSectionModal({
     setSaving(true);
     setError(null);
     try {
-      await adminFetch((t) => bulkUpdateCmsPageFields(t, validRows.map((r) => ({ page, section, field: r.name, value: r.value }))));
+      await adminFetch((t) =>
+        bulkUpdateCmsPageFields(
+          t,
+          validRows.map((r) => ({ page, section, field: r.name, value: r.value, field_type: r.fieldType }))
+        )
+      );
       showToast('success', 'Section added');
       onSaved();
       handleClose();
@@ -383,7 +357,12 @@ function AddPageModal({ open, onClose, onSaved }: { open: boolean; onClose: () =
     setSaving(true);
     setError(null);
     try {
-      await adminFetch((t) => bulkUpdateCmsPageFields(t, validRows.map((r) => ({ page, section, field: r.name, value: r.value }))));
+      await adminFetch((t) =>
+        bulkUpdateCmsPageFields(
+          t,
+          validRows.map((r) => ({ page, section, field: r.name, value: r.value, field_type: r.fieldType }))
+        )
+      );
       showToast('success', 'Page created');
       onSaved(page);
       handleClose();
@@ -451,6 +430,9 @@ export default function PageContentPage() {
   const [page, setPage] = useState(FALLBACK_PAGES[0]);
   const { data: content, loading, error, reload } = useFetch(() => adminFetch((t) => getCmsPageContent(t, page)), [page]);
   const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const [addSectionOpen, setAddSectionOpen] = useState(false);
   const [addPageOpen, setAddPageOpen] = useState(false);
@@ -459,19 +441,31 @@ export default function PageContentPage() {
   const [deleteSectionTarget, setDeleteSectionTarget] = useState<string | null>(null);
   const [deletingSection, setDeletingSection] = useState(false);
 
-  const sections = useMemo(() => {
-    const merged: Record<string, string> = { ...(content ?? {}), ...overrides };
-    const grouped = new Map<string, { field: string; value: string }[]>();
-    for (const [key, value] of Object.entries(merged)) {
-      const idx = key.indexOf('.');
-      const section = key.slice(0, idx);
-      const field = key.slice(idx + 1);
-      if (!grouped.has(section)) grouped.set(section, []);
-      grouped.get(section)!.push({ field, value });
+  // Rows already arrive ordered (section_order, then field_order) from the
+  // backend — this only groups them, it never re-sorts.
+  const allSections = useMemo(() => {
+    const rows = (content ?? []).map((r) => {
+      const override = overrides[`${r.section}.${r.field}`];
+      return override !== undefined ? { ...r, value: override } : r;
+    });
+    const grouped = new Map<string, CmsPageFieldRow[]>();
+    for (const r of rows) {
+      if (!grouped.has(r.section)) grouped.set(r.section, []);
+      grouped.get(r.section)!.push(r);
     }
-    for (const rows of grouped.values()) rows.sort((a, b) => a.field.localeCompare(b.field));
-    return Array.from(grouped.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return Array.from(grouped.entries());
   }, [content, overrides]);
+
+  const searchTerm = search.trim().toLowerCase();
+  const sections = useMemo(() => {
+    if (!searchTerm) return allSections;
+    return allSections
+      .map(([section, rows]): [string, CmsPageFieldRow[]] => [
+        section,
+        rows.filter((r) => r.field.toLowerCase().includes(searchTerm) || r.value.toLowerCase().includes(searchTerm)),
+      ])
+      .filter(([, rows]) => rows.length > 0);
+  }, [allSections, searchTerm]);
 
   function handleSaved(section: string, field: string, value: string) {
     setOverrides((prev) => ({ ...prev, [`${section}.${field}`]: value }));
@@ -480,6 +474,8 @@ export default function PageContentPage() {
   function handlePageChange(next: string) {
     setPage(next);
     setOverrides({});
+    setOpenSections(new Set());
+    setSearch('');
   }
 
   async function handleSectionAdded() {
@@ -523,6 +519,54 @@ export default function PageContentPage() {
       setDeletingSection(false);
     }
   }
+
+  async function handleMoveSection(section: string, direction: 'up' | 'down') {
+    const names = allSections.map(([name]) => name);
+    const idx = names.indexOf(section);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= names.length) return;
+    const next = [...names];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    setBusyKey(section);
+    try {
+      await adminFetch((t) => reorderCmsPageSections(t, page, next));
+      await reload();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to reorder sections');
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function handleMoveField(section: string, field: string, direction: 'up' | 'down') {
+    const rows = allSections.find(([s]) => s === section)?.[1] ?? [];
+    const names = rows.map((r) => r.field);
+    const idx = names.indexOf(field);
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= names.length) return;
+    const next = [...names];
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    setBusyKey(`${section}:${field}`);
+    try {
+      await adminFetch((t) => reorderCmsPageFields(t, page, section, next));
+      await reload();
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to reorder fields');
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  function toggleSection(section: string) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(section)) next.delete(section);
+      else next.add(section);
+      return next;
+    });
+  }
+
+  const allSectionNames = allSections.map(([name]) => name);
 
   return (
     <div>
@@ -574,27 +618,53 @@ export default function PageContentPage() {
       ) : error && !content ? (
         <ErrorNote>{error}</ErrorNote>
       ) : (
-        <div className="space-y-3">
-          {sections.length === 0 ? (
-            <EmptyState>No content fields set for &ldquo;{page}&rdquo; yet.</EmptyState>
-          ) : (
-            sections.map(([section, rows]) => (
-              <SectionGroup
-                key={section}
-                page={page}
-                section={section}
-                rows={rows}
-                canDelete={isSuperAdmin}
-                onSaved={handleSaved}
-                onDeleteField={(s, field) => setDeleteFieldTarget({ section: s, field })}
-                onDeleteSection={(s) => setDeleteSectionTarget(s)}
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="max-w-xs flex-1">
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search fields…"
+                className="text-sm"
               />
-            ))
-          )}
-          <Button type="button" variant="secondary" onClick={() => setAddSectionOpen(true)}>
-            + Add Section
-          </Button>
-        </div>
+            </div>
+            <Button type="button" variant="secondary" className="!min-h-9 !px-3 text-xs" onClick={() => setOpenSections(new Set(allSectionNames))}>
+              Expand All
+            </Button>
+            <Button type="button" variant="secondary" className="!min-h-9 !px-3 text-xs" onClick={() => setOpenSections(new Set())}>
+              Collapse All
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {sections.length === 0 ? (
+              <EmptyState>{searchTerm ? 'No fields match your search.' : `No content fields set for “${page}” yet.`}</EmptyState>
+            ) : (
+              sections.map(([section, rows], i) => (
+                <SectionGroup
+                  key={section}
+                  page={page}
+                  section={section}
+                  rows={rows}
+                  canDelete={isSuperAdmin}
+                  open={!!searchTerm || openSections.has(section)}
+                  onToggle={() => toggleSection(section)}
+                  onSaved={handleSaved}
+                  onDeleteField={(s, field) => setDeleteFieldTarget({ section: s, field })}
+                  onDeleteSection={(s) => setDeleteSectionTarget(s)}
+                  onMoveField={handleMoveField}
+                  onMoveSection={handleMoveSection}
+                  moveSectionUpDisabled={i === 0}
+                  moveSectionDownDisabled={i === sections.length - 1}
+                  busyKey={busyKey}
+                />
+              ))
+            )}
+            <Button type="button" variant="secondary" onClick={() => setAddSectionOpen(true)}>
+              + Add Section
+            </Button>
+          </div>
+        </>
       )}
       <p className="mt-3 text-xs text-ink-faint">
         Changes save immediately per field.{' '}

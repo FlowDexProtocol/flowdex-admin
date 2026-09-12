@@ -99,6 +99,24 @@ export interface CmsBlogPostPayload {
 
 export type CmsPageContent = Record<string, string>;
 
+export type CmsFieldType = 'text' | 'textarea' | 'image' | 'media' | 'url' | 'number' | 'color';
+
+// Shape of each row returned by GET /admin/cms/page/:page — ordered by
+// section_order, then field_order. The PUBLIC GET /api/cms/page/:page
+// (used by the landing/purchase sites) still returns the flat
+// CmsPageContent shape above; this richer shape is admin-only.
+export interface CmsPageFieldRow {
+  id: number;
+  page: string;
+  section: string;
+  field: string;
+  value: string;
+  field_type: CmsFieldType;
+  section_order: number;
+  field_order: number;
+  updated_at: string;
+}
+
 export interface CmsMedia {
   id: number;
   name: string;
