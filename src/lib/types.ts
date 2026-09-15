@@ -565,6 +565,10 @@ export interface OtcTodayEntry {
   estimated_completion: string;
 }
 
+// Payment/cancellation lifecycle — independent of drip_status below,
+// which only tracks whether the token drip itself is active/paused/done.
+export type OtcStatus = 'allocated' | 'partial' | 'completed' | 'cancelled';
+
 export interface OtcAllocation {
   id: number;
   investor_name: string;
@@ -584,6 +588,27 @@ export interface OtcAllocation {
   payment_reference: string | null;
   notes: string | null;
   created_at: string;
+  status: OtcStatus;
+  cancelled_at: string | null;
+  cancelled_by: number | null;
+  cancel_reason: string | null;
+  paid_amount: Numeric;
+  paid_tokens: Numeric;
+  tokens_returned: Numeric;
+}
+
+export interface OtcRecordPaymentPayload {
+  usd_amount: number;
+  tx_hash?: string;
+  chain?: string;
+}
+
+export interface OtcCancelResponse {
+  success: boolean;
+  tokens_returned: number;
+  returned_to_tier: string | null;
+  new_status?: OtcStatus;
+  error?: string;
 }
 
 export interface DisplayOverride {

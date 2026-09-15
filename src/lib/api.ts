@@ -46,6 +46,9 @@ import type {
   OtcAllocatePayload,
   OtcAllocateResponse,
   OtcAllocation,
+  OtcCancelResponse,
+  OtcRecordPaymentPayload,
+  OtcStatus,
   OtcTodayEntry,
   OverridesResponse,
   PaginatedResponse,
@@ -274,11 +277,24 @@ export const exportClaimsCsv = (token: string) =>
 export const postOtcAllocate = (token: string, payload: OtcAllocatePayload) =>
   request<OtcAllocateResponse>('/admin/otc/allocate', { method: 'POST', body: payload, token });
 export const getOtcToday = (token: string) => request<OtcTodayEntry[]>('/admin/otc/today', { token });
-export const getOtcHistory = (token: string) => request<OtcAllocation[]>('/admin/otc/history', { token });
+// statuses: payment/cancellation status filter (comma-separated) — omit
+// for every status, since the table renders a badge per row regardless.
+export const getOtcHistory = (token: string, statuses?: OtcStatus[]) =>
+  request<OtcAllocation[]>('/admin/otc/history', { token, query: statuses?.length ? { status: statuses.join(',') } : undefined });
 export const postOtcPause = (token: string, id: number) =>
   request<{ success: boolean }>(`/admin/otc/pause/${id}`, { method: 'POST', token });
 export const postOtcResume = (token: string, id: number) =>
   request<{ success: boolean }>(`/admin/otc/resume/${id}`, { method: 'POST', token });
+export const postOtcRecordPayment = (token: string, id: number, payload: OtcRecordPaymentPayload) =>
+  request<{ success: boolean; allocation: OtcAllocation }>(`/admin/otc/${id}/record-payment`, { method: 'POST', body: payload, token });
+export const postOtcCancel = (token: string, id: number, reason?: string) =>
+  request<OtcCancelResponse>(`/admin/otc/${id}/cancel`, { method: 'POST', body: reason ? { reason } : {}, token });
+export const postOtcPartialCancel = (token: string, id: number, tokensToCancel: number, reason?: string) =>
+  request<OtcCancelResponse>(`/admin/otc/${id}/partial-cancel`, {
+    method: 'POST',
+    body: { tokens_to_cancel: tokensToCancel, reason },
+    token,
+  });
 
 // ── Display Overrides ──
 export const getOverrides = (token: string) => request<OverridesResponse>('/admin/overrides', { token });
