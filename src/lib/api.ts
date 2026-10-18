@@ -50,6 +50,9 @@ import type {
   OtcRecordPaymentPayload,
   OtcStatus,
   OtcTodayEntry,
+  OtcImportPreviewResponse,
+  OtcImportCommitResponse,
+  OtcImportBatch,
   OverridesResponse,
   PaginatedResponse,
   ReconciliationResult,
@@ -549,3 +552,48 @@ export const deleteCmsTeamMember = (token: string, id: number) =>
   request<{ success: boolean }>(`/admin/cms/team/${id}`, { method: 'DELETE', token });
 export const reorderCmsTeam = (token: string, ids: number[]) =>
   request<{ success: boolean; order: number[] }>('/admin/cms/team/reorder', { method: 'POST', body: { ids }, token });
+
+// ── OTC bulk import ──
+// Multipart like uploadFile(), and for the same reason: the browser must
+// set its own Content-Type so the multipart boundary is correct.
+//
+// The file is sent twice, once to preview and once to commit. The backend
+// re-validates on commit rather than trusting a token from the preview, so
+// resending the file is both simpler and the safer of the two designs.
+async function postCsv<T>(path: string, token: string, file: File): Promise<T> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  let data: unknown = null;
+  const text = await res.text();
+  if (text) {
+    try { data = JSON.parse(text); } catch { data = null; }
+  }
+
+  if (!res.ok) {
+    const payload = (data ?? {}) as { error?: string };
+    throw new ApiError(payload.error || `Request failed (${res.status})`, res.status, undefined, data);
+  }
+  return data as T;
+}
+
+export const postOtcImportPreview = (token: string, file: File) =>
+  postCsv<OtcImportPreviewResponse>('/admin/otc/import/preview', token, file);
+
+export const postOtcImportCommit = (token: string, file: File) =>
+  postCsv<OtcImportCommitResponse>('/admin/otc/import/commit', token, file);
+
+export const getOtcImportBatches = (token: string) =>
+  request<OtcImportBatch[]>('/admin/otc/import/batches', { token });
+
+export const postOtcImportRevert = (token: string, id: number) =>
+  request<{ success: boolean; reverted: number }>(`/admin/otc/import/batches/${id}/revert`, { method: 'POST', token });
+
+export const downloadOtcImportTemplate = (token: string) =>
+  downloadCsv('/admin/otc/import/template', token, 'otc-import-template.csv');

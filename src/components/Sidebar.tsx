@@ -38,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Management',
     items: [
       { href: '/otc', label: 'OTC', roles: ['super_admin'] },
+      { href: '/otc/import', label: 'OTC Import', roles: ['super_admin'] },
       { href: '/overrides', label: 'Overrides', roles: ['super_admin'] },
       { href: '/supply', label: 'Supply', roles: ['super_admin'] },
       { href: '/reconciliation', label: 'Reconciliation', roles: ['super_admin'] },

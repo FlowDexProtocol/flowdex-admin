@@ -717,3 +717,66 @@ export const BUYER_TAGS: Record<string, { label: string; tone: 'purple' | 'red' 
   dolphin: { label: 'Dolphin', tone: 'primary' },
   fish: { label: 'Fish', tone: 'green' },
 };
+
+// ── OTC bulk import ──
+// One row of the uploaded CSV, after the backend has validated it. A row
+// with any errors is excluded from the commit; warnings are advisory.
+export interface OtcImportRow {
+  /** 1-based line in the file, counting the header. */
+  line: number;
+  row: {
+    investor_name: string;
+    investor_wallet: string;
+    usd_amount: number;
+    payment_currency: string;
+    crypto_amount: number | null;
+    received_at: string;
+    notes: string | null;
+  };
+  errors: string[];
+  warnings: string[];
+  fingerprint: string | null;
+}
+
+export interface OtcImportSummary {
+  total_rows: number;
+  valid_rows: number;
+  error_rows: number;
+  warning_rows: number;
+  total_usd: number;
+  active_tier: { id: number; name: string; price: Numeric } | null;
+  /** Indicative: a large batch can advance the tier partway through. */
+  estimated_tokens: number | null;
+}
+
+export interface OtcImportPreviewResponse {
+  success: boolean;
+  ok: boolean;
+  rows: OtcImportRow[];
+  summary: OtcImportSummary;
+  filename: string;
+  error?: string;
+}
+
+export interface OtcImportCommitResponse {
+  success: boolean;
+  batch_id: number;
+  imported: number;
+  failed: number;
+  failures: { line: number; error: string }[];
+  total_usd: number;
+  error?: string;
+}
+
+export interface OtcImportBatch {
+  id: number;
+  filename: string | null;
+  uploaded_by: string;
+  row_count: number;
+  total_usd: Numeric;
+  status: 'committed' | 'reverted' | string;
+  reverted_at: string | null;
+  reverted_by: string | null;
+  created_at: string;
+  live_allocations: number;
+}
