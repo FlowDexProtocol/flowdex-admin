@@ -309,6 +309,7 @@ function DetailsModal({
     ['Paid', `${formatTokens(allocation.paid_tokens)} $FDP (${formatUsd(allocation.paid_amount)})`],
     ['Drip Released', formatUsd(allocation.drip_released_usd)],
     ['Drip Status', allocation.drip_status],
+    ['Scheduled Start', allocation.scheduled_start_time ? formatDate(allocation.scheduled_start_time) : '—'],
     ['Payment Status', STATUS_LABEL[allocation.status]],
     ['Payment Method', allocation.payment_method || '—'],
     ['Payment Reference', allocation.payment_reference || '—'],
@@ -363,6 +364,9 @@ export default function OtcPage() {
   const [amountUsd, setAmountUsd] = useState('');
   const [paymentReference, setPaymentReference] = useState('');
   const [notes, setNotes] = useState('');
+  // Empty means start now. Held as the raw datetime-local string and
+  // converted to ISO on submit, so the admin types in their own timezone.
+  const [scheduledStart, setScheduledStart] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -385,6 +389,14 @@ export default function OtcPage() {
     reloadToday();
     reloadHistory();
   }
+
+  // Browsers compare the min attribute against the field's own local-time
+  // string, so this must be local time, not an ISO/UTC value.
+  const minScheduleValue = useMemo(() => {
+    const d = new Date(Date.now() + 60 * 1000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }, []);
 
   const summary = useMemo(() => {
     const rows = history ?? [];
@@ -416,14 +428,24 @@ export default function OtcPage() {
           amount_usd: parseFloat(amountUsd),
           payment_reference: paymentReference || undefined,
           notes: notes || undefined,
+          // datetime-local has no timezone, so the Date constructor reads it
+          // in the browser's zone and toISOString sends an unambiguous UTC
+          // instant. Without this the backend would read 09:00 Dubai as
+          // 09:00 UTC and start the drip four hours late.
+          scheduled_start_time: scheduledStart ? new Date(scheduledStart).toISOString() : undefined,
         })
       );
-      setSubmitSuccess(`Allocated ${formatTokens(res.tokens)} $FDP — drip ends ${formatDate(res.drip_ends_at)}.`);
+      setSubmitSuccess(
+        res.scheduled && res.drip_starts_at
+          ? `Scheduled ${formatTokens(res.tokens)} $FDP — drip starts ${formatDate(res.drip_starts_at)}.`
+          : `Allocated ${formatTokens(res.tokens)} $FDP — drip ends ${formatDate(res.drip_ends_at)}.`
+      );
       setInvestorName('');
       setInvestorWallet('');
       setAmountUsd('');
       setPaymentReference('');
       setNotes('');
+      setScheduledStart('');
       reloadAll();
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Allocation failed');
@@ -466,6 +488,19 @@ export default function OtcPage() {
           <div>
             <Label>Payment Reference</Label>
             <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Start Time (optional)</Label>
+            <Input
+              type="datetime-local"
+              value={scheduledStart}
+              min={minScheduleValue}
+              onChange={(e) => setScheduledStart(e.target.value)}
+            />
+            <p className="mt-1.5 text-xs text-ink-faint">
+              Leave empty to start the drip immediately. Set a time to have it
+              begin on its own, up to 90 days ahead. Uses your local timezone.
+            </p>
           </div>
           <div className="sm:col-span-2">
             <Label>Notes</Label>
@@ -577,8 +612,23 @@ export default function OtcPage() {
                   </td>
                   <td className={td}>
                     <Badge tone={STATUS_TONE[a.status]}>{STATUS_LABEL[a.status]}</Badge>
+                    {a.drip_status === 'scheduled' && (
+                      <>
+                        {' '}
+                        <Badge tone="primary">Scheduled</Badge>
+                      </>
+                    )}
                   </td>
-                  <td className={`${td} text-ink-dim`}>{formatDate(a.created_at)}</td>
+                  <td className={`${td} text-ink-dim`}>
+                    {a.drip_status === 'scheduled' && a.scheduled_start_time ? (
+                      <>
+                        <span className="text-ink">Starts {formatDate(a.scheduled_start_time)}</span>
+                        <span className="block text-xs text-ink-faint">created {formatDate(a.created_at)}</span>
+                      </>
+                    ) : (
+                      formatDate(a.created_at)
+                    )}
+                  </td>
                   <td className={td}>
                     <div className="flex flex-wrap gap-1.5">
                       {(a.status === 'allocated' || a.status === 'partial') && (

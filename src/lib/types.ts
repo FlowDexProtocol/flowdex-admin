@@ -544,12 +544,20 @@ export interface OtcAllocatePayload {
   amount_usd: number;
   payment_reference?: string;
   notes?: string;
+  /**
+   * ISO timestamp. Omit to start the drip immediately, which is the
+   * long-standing behaviour. A future time parks the allocation as
+   * 'scheduled' until the backend activates it at that moment.
+   */
+  scheduled_start_time?: string;
 }
 
 export interface OtcAllocateResponse {
   success: boolean;
   allocation_id: number;
   tokens: number;
+  scheduled?: boolean;
+  drip_starts_at?: string;
   drip_ends_at: string;
   error?: string;
 }
@@ -583,7 +591,8 @@ export interface OtcAllocation {
   drip_start_time: string;
   drip_end_time: string;
   drip_released_usd: Numeric;
-  drip_status: 'active' | 'paused' | string;
+  drip_status: 'active' | 'paused' | 'scheduled' | 'completed' | string;
+  scheduled_start_time: string | null;
   payment_method: string | null;
   payment_reference: string | null;
   notes: string | null;
