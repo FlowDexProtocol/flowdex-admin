@@ -86,9 +86,10 @@ export default function OtcImportPage() {
     const n = preview.summary.valid_rows;
     const usd = formatUsd(preview.summary.total_usd);
     if (!window.confirm(
-      `Import ${n} payment${n === 1 ? '' : 's'} totalling ${usd}?\n\n` +
-      'Each one is credited to the live tier and announced to the public channel. ' +
-      'This cannot be undone once claims are generated.'
+      `Schedule ${n} allocation${n === 1 ? '' : 's'} totalling ${usd}?\n\n` +
+      'Nothing is credited or announced now. Each one releases at its own ' +
+      'release_at time, priced at the tier live at that moment, and is ' +
+      'announced to the public channel then.'
     )) return;
 
     setBusy('commit');
@@ -152,10 +153,14 @@ export default function OtcImportPage() {
           className="block w-full text-sm text-ink-dim file:mr-4 file:rounded-lg file:border-0 file:bg-primary-dim file:px-4 file:py-2.5 file:text-sm file:font-semibold file:text-primary hover:file:bg-primary-dim/70"
         />
         <p className="mt-2 text-xs text-ink-faint">
-          Columns: investor_name, investor_wallet, usd_amount, payment_currency, received_at,
-          and optionally crypto_amount and notes. Up to 500 rows.
+          Columns: investor_name, investor_wallet, usd_amount, payment_currency, release_at,
+          and optionally crypto_amount, received_at and notes. Up to 500 rows.
           <br />
-          received_at is when the payment actually arrived and cannot be in the future.
+          release_at is when the allocation happens and the channel is told. It must be
+          in the future, at most 90 days ahead. Write it with your offset, for example
+          2026-10-20T19:15:00+04:00, so the time means what you intend.
+          <br />
+          received_at is optional, private, and never announced.
         </p>
 
         {file && (
@@ -173,8 +178,9 @@ export default function OtcImportPage() {
       {result && (
         <Card className="mb-6">
           <SuccessNote>
-            Batch #{result.batch_id}: imported {result.imported} payment
+            Batch #{result.batch_id}: scheduled {result.imported} allocation
             {result.imported === 1 ? '' : 's'} totalling {formatUsd(result.total_usd)}.
+            Each releases at its own time and is announced then.
             {result.failed > 0 && ` ${result.failed} row(s) failed.`}
           </SuccessNote>
           {result.failures?.length > 0 && (
@@ -212,11 +218,20 @@ export default function OtcImportPage() {
             <Summary label="Total" value={formatUsd(preview.summary.total_usd)} tone="primary" />
           </div>
 
+          {preview.summary.first_release && (
+            <p className="mb-4 text-xs text-ink-faint">
+              {preview.summary.first_release === preview.summary.last_release
+                ? `All ${preview.summary.valid_rows} release together at ${formatDate(preview.summary.first_release)}. They are announced one at a time, a few seconds apart, so the channel takes a few minutes to work through them.`
+                : `Releases run from ${formatDate(preview.summary.first_release)} to ${formatDate(preview.summary.last_release!)}.`}
+            </p>
+          )}
+
           {preview.summary.active_tier && (
             <p className="mb-4 text-xs text-ink-faint">
               Active tier {preview.summary.active_tier.name} at ${preview.summary.active_tier.price}.
-              Roughly {formatTokens(preview.summary.estimated_tokens ?? 0)} FDP, though a batch large
-              enough to fill the tier will price later rows at the next one.
+              Roughly {formatTokens(preview.summary.estimated_tokens ?? 0)} FDP at today&apos;s price —
+              indicative only, since each row is priced at whichever tier is live when it
+              releases, not at import.
             </p>
           )}
 
@@ -227,7 +242,7 @@ export default function OtcImportPage() {
                   <th className={th}>Investor</th>
                   <th className={th}>Amount</th>
                   <th className={th}>Paid in</th>
-                  <th className={th}>Received</th>
+                  <th className={th}>Releases</th>
                   <th className={th}>Status</th>
                 </tr>
               </thead>
@@ -252,7 +267,7 @@ export default function OtcImportPage() {
                       </Mono>
                     </td>
                     <td className={`${td} text-ink-dim`}>
-                      {r.row.received_at ? formatDate(r.row.received_at) : '—'}
+                      {r.row.release_at ? formatDate(r.row.release_at) : '—'}
                     </td>
                     <td className={td}>
                       {r.errors.length ? (

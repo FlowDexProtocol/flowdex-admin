@@ -730,7 +730,10 @@ export interface OtcImportRow {
     usd_amount: number;
     payment_currency: string;
     crypto_amount: number | null;
-    received_at: string;
+    /** When this allocation releases and the channel is told. */
+    release_at: string;
+    /** Optional, private bookkeeping. Never announced. */
+    received_at: string | null;
     notes: string | null;
   };
   errors: string[];
@@ -745,8 +748,14 @@ export interface OtcImportSummary {
   warning_rows: number;
   total_usd: number;
   active_tier: { id: number; name: string; price: Numeric } | null;
-  /** Indicative: a large batch can advance the tier partway through. */
+  /**
+   * Indicative only. Each row is priced at whichever tier is live when it
+   * releases, which for a batch spanning days is not today's tier.
+   */
   estimated_tokens: number | null;
+  /** Earliest and latest release_at among valid rows; null if none. */
+  first_release: string | null;
+  last_release: string | null;
 }
 
 export interface OtcImportPreviewResponse {
